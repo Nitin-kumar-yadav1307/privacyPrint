@@ -138,7 +138,48 @@ async function runTests() {
   // Test 9: Cross-tenant print denial
   const crossPrint = await apiRequest('POST', `/api/jobs/${jobId}/complete?tenantId=TENANT-002`)
   assert.strictEqual(crossPrint.status, 404, 'Cross-tenant print should return 404')
-  console.log('✓ Test 9: Cross-tenant print denial works')
+     console.log('✓ Test 9: Cross-tenant print denial works')
+
+  // Test 10: Status check endpoint
+  const statusRes = await apiRequest('GET', `/api/jobs/${jobId}/status?tenantId=TENANT-001`)
+  assert.strictEqual(statusRes.status, 200)
+  assert.strictEqual(statusRes.body.status, 'PRINTED')
+  assert.strictEqual(statusRes.body.jobId, jobId)
+  console.log('✓ Test 10: Status check endpoint passes')
+
+  // Test 11: Status check — cross-tenant 404
+  const crossStatus = await apiRequest('GET', `/api/jobs/${jobId}/status?tenantId=TENANT-002`)
+  assert.strictEqual(crossStatus.status, 404, 'Cross-tenant status should return 404')
+  console.log('✓ Test 11: Cross-tenant status denial works')
+
+  // Test 12: Printer queue
+  const queueRes = await apiRequest('GET', '/api/jobs/queue?tenantId=TENANT-001')
+  assert.strictEqual(queueRes.status, 200)
+  assert.ok(Array.isArray(queueRes.body.jobs))
+  // The job from test 2-7 is PRINTED, so it should not be in the queue
+  // Create a new job for queue testing
+  const queued = await apiRequest('POST', '/api/jobs', null, testFilePath)
+  assert.ok([200, 201].includes(queued.status), 'Create job for queue test should return 200/201')
+  const queuedJobId = queued.body.job.jobId
+  const queueRes2 = await apiRequest('GET', '/api/jobs/queue?tenantId=TENANT-001')
+  assert.strictEqual(queueRes2.status, 200)
+  assert.ok(queueRes2.body.jobs.some((j) => j.jobId === queuedJobId), 'Queue should contain the new READY job')
+  assert.ok(queueRes2.body.jobs.every((j) => ['READY', 'PRINTING'].includes(j.status)), 'Queue should only have READY/PRINTING jobs')
+  console.log('✓ Test 12: Printer queue endpoint passes')
+
+  // Test 13: Auto-complete a PRINTING job
+  await apiRequest('POST', `/api/jobs/${queuedJobId}/print?tenantId=TENANT-001`)
+  const autoCompleted = await apiRequest('POST', `/api/jobs/${queuedJobId}/autocomplete?tenantId=TENANT-001`)
+  assert.strictEqual(autoCompleted.status, 200)
+  assert.strictEqual(autoCompleted.body.job.status, 'PRINTED')
+  assert.ok(autoCompleted.body.job.expiresAt, 'Auto-completed job should have expiresAt')
+  console.log('✓ Test 13: Auto-complete print passes')
+
+  // Test 14: Auto-complete non-PRINTING job returns job as-is
+  const autoOnReady = await apiRequest('POST', `/api/jobs/${jobId}/autocomplete?tenantId=TENANT-001`)
+  assert.strictEqual(autoOnReady.status, 200)
+  assert.strictEqual(autoOnReady.body.job.status, 'PRINTED', 'Job already PRINTED should stay PRINTED')
+  console.log('✓ Test 14: Auto-complete on non-PRINTING job handled gracefully')
 
   // Cleanup
   fs.unlinkSync(testFilePath)

@@ -247,6 +247,103 @@ function completePrint(req, res, next) {
   }
 }
 
+/**
+ * GET /jobs/:jobId/status?tenantId=<id>
+ * Lightweight status check — returns just the jobId and status for polling.
+ */
+function getStatus(req, res, next) {
+  try {
+    const { jobId } = req.params
+    const { tenantId } = req.query
+
+    if (!tenantId) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'tenantId query parameter is required',
+      })
+    }
+
+    const status = jobService.getStatus(jobId, tenantId)
+
+    if (!status) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Job not found or you do not have access to this job',
+      })
+    }
+
+    res.json({
+      success: true,
+      jobId: status.jobId,
+      status: status.status,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * GET /jobs/queue?tenantId=<id>
+ * Get the printer queue for a shop — READY and PRINTING jobs.
+ */
+function getQueue(req, res, next) {
+  try {
+    const { tenantId } = req.query
+
+    if (!tenantId) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'tenantId query parameter is required',
+      })
+    }
+
+    const queueJobs = jobService.getQueue(tenantId)
+
+    res.json({
+      success: true,
+      jobs: queueJobs,
+      count: queueJobs.length,
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * POST /jobs/:jobId/autocomplete?tenantId=<id>
+ * Printer simulator auto-completes a PRINTING job.
+ */
+function autoComplete(req, res, next) {
+  try {
+    const { jobId } = req.params
+    const { tenantId } = req.query
+
+    if (!tenantId) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'tenantId query parameter is required',
+      })
+    }
+
+    const job = jobService.autoCompletePrint(jobId, tenantId)
+
+    if (!job) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Job not found or you do not have access to this job',
+      })
+    }
+
+    res.json({
+      success: true,
+      job,
+      message: 'Job auto-completed by printer simulator',
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
 module.exports = {
   health,
   createJob,
@@ -254,5 +351,8 @@ module.exports = {
   getJob,
   startPrint,
   completePrint,
+  getStatus,
+  getQueue,
+  autoComplete,
   validatePrintSettings,
 }

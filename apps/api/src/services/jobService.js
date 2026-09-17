@@ -161,13 +161,66 @@ function getRaw(jobId) {
   return jobs.get(jobId)
 }
 
+/**
+ * Get the public-safe status of a job (lightweight — for polling).
+ * @param {string} jobId
+ * @param {string} tenantId
+ * @returns {Object|null} Status info { jobId, status, tenantId } or null if unauthorized
+ */
+function getStatus(jobId, tenantId) {
+  const job = jobs.get(jobId)
+  if (!job || job.tenantId !== tenantId) {
+    return null
+  }
+  return {
+    jobId: job.jobId,
+    status: job.status,
+    tenantId: job.tenantId,
+  }
+}
+
+/**
+ * Get the printer queue for a tenant — READY and PRINTING jobs.
+ * @param {string} tenantId
+ * @returns {Array<Object>} Public-safe jobs that are ready or printing
+ */
+function getQueue(tenantId) {
+  return Array.from(jobs.values())
+    .filter((job) => job.tenantId === tenantId &&
+      (job.status === JOB_STATUS.READY || job.status === JOB_STATUS.PRINTING))
+    .map(toPublic)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+}
+
+/**
+ * Auto-complete a job that is in PRINTING state.
+ * Used by the printer simulator to mark jobs as printed after a delay.
+ * @param {string} jobId
+ * @param {string} tenantId
+ * @returns {Object|null} Updated public job or null if unauthorized/not found
+ */
+function autoCompletePrint(jobId, tenantId) {
+  const job = jobs.get(jobId)
+  if (!job || job.tenantId !== tenantId) {
+    return null
+  }
+  if (job.status !== JOB_STATUS.PRINTING) {
+    return toPublic(job)
+  }
+  _markPrinted(job, job.printSettings.retentionMinutes)
+  return toPublic(job)
+}
+
 module.exports = {
   create,
   getById,
   getByTenant,
   getByIdAndTenant,
+  getStatus,
+  getQueue,
   startPrinting,
   markPrinted,
+  autoCompletePrint,
   expireJob,
   cancelJob,
   allJobs,

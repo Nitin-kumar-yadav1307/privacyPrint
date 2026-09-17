@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Layout } from '../../components/Layout.jsx'
 import { Card, CardBody } from '../../components/Card.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
+import { usePolling } from '../../hooks/usePolling.js'
 import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
 
 const SHOPS = [
@@ -18,25 +19,38 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
+  const [error, setError] = useState('')
+
+  const fetchJobs = useCallback(async (signal) => {
     if (!selectedShop) return
-        const controller = new AbortController()
-    setTimeout(() => setLoading(true), 0)
-    fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${selectedShop}`)
-      .then((data) => setJobs(data.jobs || []))
-      .catch((e) => {
-        if (e.name !== 'AbortError') { console.error(e); setJobs([]) }
-      })
-      .finally(() => setLoading(false))
-    return () => controller.abort()
+    setLoading(true)
+    try {
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${encodeURIComponent(selectedShop)}`, { signal })
+      if (!signal.aborted) {
+        setJobs(data.jobs || [])
+        setError('')
+      }
+    } catch (e) {
+      if (!signal.aborted) setError(e.message)
+    } finally {
+      if (!signal.aborted) setLoading(false)
+    }
   }, [selectedShop, apiBaseUrl])
+
+  // Auto-refresh every 5 seconds when a shop is selected
+  usePolling(fetchJobs, selectedShop ? 5000 : null)
 
   return (
     <Layout title="My Print Jobs">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Print Shop</label>
-          <select value={selectedShop} onChange={(e) => setSelectedShop(e.target.value)}
+          <select value={selectedShop} onChange={(e) => {
+            setSelectedShop(e.target.value)
+            setJobs([])
+            setError('')
+            setLoading(Boolean(e.target.value))
+          }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800">
             <option value="">All shops (local only)</option>
             {SHOPS.map((s) => (
@@ -49,6 +63,8 @@ export default function JobsPage() {
             </p>
           )}
         </div>
+
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">Unable to refresh jobs: {error}</p>}
 
         {jobs.length === 0 && !loading ? (
           <Card>

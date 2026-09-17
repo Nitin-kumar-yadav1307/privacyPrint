@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '../../components/Layout.jsx'
 import { Card, CardHeader, CardBody } from '../../components/Card.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
+import { usePolling } from '../../hooks/usePolling.js'
 import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
 
 const SHOPS = [
@@ -22,17 +23,35 @@ export default function ShopDashboardPage() {
   const [printingJobId, setPrintingJobId] = useState(null)
   const [printerLogs, setPrinterLogs] = useState([])
 
-  useEffect(() => {
-    if (!shopTenant) { navigate('/shop'); return }
-    const fetchJobs = async () => {
-      try {
-        const data = await fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${shopTenant}`)
+  const [queue, setQueue] = useState([])
+  const [error, setError] = useState('')
+
+  const fetchJobs = useCallback(async (signal) => {
+    if (!shopTenant) return
+    try {
+      const tenant = encodeURIComponent(shopTenant)
+      const [data, queueData] = await Promise.all([
+        fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${tenant}`, { signal }),
+        fetchJSON(apiBaseUrl, `/api/jobs/queue?tenantId=${tenant}`, { signal }),
+      ])
+      if (!signal.aborted) {
         setJobs(data.jobs || [])
-      } catch { setJobs([]) }
-      finally { setLoading(false) }
+        setQueue(queueData.jobs || [])
+        setError('')
+      }
+    } catch (e) {
+      if (!signal.aborted) setError(e.message)
+    } finally {
+      if (!signal.aborted) setLoading(false)
     }
-    fetchJobs()
-  }, [shopTenant, navigate, apiBaseUrl])
+  }, [shopTenant, apiBaseUrl])
+
+  useEffect(() => {
+    if (!shopTenant) navigate('/shop')
+  }, [shopTenant, navigate])
+
+  // Auto-refresh job list every 5 seconds
+  usePolling(fetchJobs, shopTenant ? 5000 : null)
 
   const addLog = (msg) => setPrinterLogs((p) => [...p.slice(-49), msg])
 
@@ -43,12 +62,13 @@ export default function ShopDashboardPage() {
 
     // Notify backend to start printing
     try {
-      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/print?tenantId=${shopTenant}`)
-      setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: 'PRINTING' } : j))
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/print?tenantId=${shopTenant}`, { method: 'POST' })
+      setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? data.job : j))
+      setQueue((prev) => prev.map((j) => j.jobId === job.jobId ? data.job : j))
       addLog(data.message || 'Status: PRINTING')
     } catch (e) {
       console.error('Failed to start print:', e)
-      setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: 'FAILED', failureReason: e.message } : j))
+      addLog(`[${new Date().toLocaleTimeString()}] ERROR: ${e.message}`)
       setPrintingJobId(null)
       return
     }
@@ -62,7 +82,8 @@ export default function ShopDashboardPage() {
 
     // Notify backend that printing is complete
     try {
-      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/complete?tenantId=${shopTenant}`)
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/autocomplete?tenantId=${shopTenant}`, { method: 'POST' })
+      setQueue((prev) => prev.filter((j) => j.jobId !== job.jobId))
       setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: data.job.status, printedAt: data.job.printedAt, expiresAt: data.job.expiresAt } : j))
       addLog(`[${new Date().toLocaleTimeString()}] PRINT COMPLETED — Job ${job.jobId} retained for ${job.printSettings?.retentionMinutes ?? 30} min (demo: ~${(job.printSettings?.retentionMinutes * 10 || 300)}s)`)
     } catch (e) {
@@ -120,6 +141,32 @@ export default function ShopDashboardPage() {
                 <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent" />
                 Printing Job {printingJobId}...
               </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">Unable to refresh jobs: {error}</p>}
+
+        <Card>
+          <CardHeader>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Printer Queue ({queue.length})</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Oldest first · Refreshes every 5 seconds · Simulated printing</p>
+          </CardHeader>
+          <CardBody>
+            {loading ? <p className="text-sm text-gray-500">Loading queue...</p> : queue.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No jobs waiting to print.</p>
+            ) : (
+              <ol className="space-y-3">
+                {queue.map((job, index) => (
+                  <li key={job.jobId} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{index + 1}. {job.document?.originalName || job.jobId}</p>
+                      <span className="font-mono text-xs text-gray-500">{job.jobId}</span>
+                    </div>
+                    <StatusBadge status={job.status} />
+                  </li>
+                ))}
+              </ol>
             )}
           </CardBody>
         </Card>
