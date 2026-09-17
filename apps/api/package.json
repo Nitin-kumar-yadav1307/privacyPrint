@@ -1,0 +1,23 @@
+{
+    "name": "api",
+    "version": "1.0.0",
+    "description": "PrivacyPrint API server",
+    "main": "src/server.js",
+    "type": "commonjs",
+    "scripts": {
+        "start": "node src/server.js",
+        "dev": "node src/server.js",
+        "lint": "echo 'No linter configured' && exit 0",
+        "test": "node tests/jobs.test.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "cors": "^2.8.6",
+        "dotenv": "^17.4.2",
+        "express": "^5.2.1",
+        "multer": "^2.4.0",
+        "uuid": "^14.0.2"
+    }
+}

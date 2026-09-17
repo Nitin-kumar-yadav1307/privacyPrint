@@ -5,6 +5,7 @@ import { Card, CardHeader, CardBody } from '../../components/Card.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
+import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
 
 const SHOPS = [
   { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
@@ -14,6 +15,7 @@ const SHOPS = [
 
 export default function ShopDashboardPage() {
   const navigate = useNavigate()
+  const apiBaseUrl = useApiBaseUrl()
   const [shopTenant] = useLocalStorage('shopTenant', '')
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -24,23 +26,32 @@ export default function ShopDashboardPage() {
     if (!shopTenant) { navigate('/shop'); return }
     const fetchJobs = async () => {
       try {
-        const res = await fetch(`http://localhost:3001/jobs?tenantId=${shopTenant}`)
-        if (!res.ok) throw new Error('Failed')
-        const data = await res.json()
-        setJobs(data)
+        const data = await fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${shopTenant}`)
+        setJobs(data.jobs || [])
       } catch { setJobs([]) }
       finally { setLoading(false) }
     }
     fetchJobs()
-  }, [shopTenant, navigate])
+  }, [shopTenant, navigate, apiBaseUrl])
 
   const addLog = (msg) => setPrinterLogs((p) => [...p.slice(-49), msg])
 
   const handlePrint = async (job) => {
     if (printingJobId) return
     setPrintingJobId(job.jobId)
-    setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: 'PRINTING' } : j))
     addLog(`[${new Date().toLocaleTimeString()}] PRINT initiated for Job ${job.jobId}`)
+
+    // Notify backend to start printing
+    try {
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/print?tenantId=${shopTenant}`)
+      setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: 'PRINTING' } : j))
+      addLog(data.message || 'Status: PRINTING')
+    } catch (e) {
+      console.error('Failed to start print:', e)
+      setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: 'FAILED', failureReason: e.message } : j))
+      setPrintingJobId(null)
+      return
+    }
 
     const copies = job.printSettings?.copies ?? 1
     for (let i = 1; i <= copies; i++) {
@@ -49,21 +60,15 @@ export default function ShopDashboardPage() {
     }
     await new Promise((r) => setTimeout(r, 500))
 
+    // Notify backend that printing is complete
     try {
-      await fetch(`http://localhost:3001/jobs/${job.jobId}/printed`, { method: 'POST' })
-    } catch (e) { console.error('Failed to notify backend:', e) }
-
-    const now = new Date()
-    const retentionMs = (job.printSettings?.retentionMinutes ?? 30) * 60 * 1000
-    const demoMultiplier = 1 / 60
-    const expiresAt = new Date(now.getTime() + retentionMs * demoMultiplier)
-
-    setJobs((prev) => prev.map((j) =>
-      j.jobId === job.jobId
-        ? { ...j, status: 'PRINTED', printedAt: now.toISOString(), expiresAt: expiresAt.toISOString() }
-        : j
-    ))
-    addLog(`[${new Date().toLocaleTimeString()}] PRINT COMPLETED — Job ${job.jobId} retained for ${job.printSettings?.retentionMinutes ?? 30} min (demo: ~${(retentionMs * demoMultiplier / 1000).toFixed(1)}s)`)
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/complete?tenantId=${shopTenant}`)
+      setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: data.job.status, printedAt: data.job.printedAt, expiresAt: data.job.expiresAt } : j))
+      addLog(`[${new Date().toLocaleTimeString()}] PRINT COMPLETED — Job ${job.jobId} retained for ${job.printSettings?.retentionMinutes ?? 30} min (demo: ~${(job.printSettings?.retentionMinutes * 10 || 300)}s)`)
+    } catch (e) {
+      console.error('Failed to complete print:', e)
+      addLog(`[${new Date().toLocaleTimeString()}] ERROR: ${e.message}`)
+    }
     setPrintingJobId(null)
   }
 
@@ -144,7 +149,7 @@ export default function ShopDashboardPage() {
                         <span className="font-mono text-sm text-indigo-600 dark:text-indigo-400 font-medium">{job.jobId}</span>
                         <StatusBadge status={job.status} />
                       </div>
-                      <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white truncate">{job.documentName}</p>
+                      <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white truncate">{job.document?.originalName || '—'}</p>
                       <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Received {job.createdAt ? new Date(job.createdAt).toLocaleString() : '—'}</p>
                     </div>
                     {job.status === 'READY' || job.status === 'CREATED' ? (

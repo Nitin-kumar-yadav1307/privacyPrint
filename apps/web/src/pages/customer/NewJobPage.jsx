@@ -6,6 +6,7 @@ import { Card, CardHeader, CardBody } from '../../components/Card.jsx'
 import { Input, Select } from '../../components/Input.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { RETENTION_OPTIONS } from '../../constants/index.js'
+import { useApiBaseUrl, uploadFile } from '../../services/api.js'
 
 const SHOPS = [
   { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
@@ -15,6 +16,7 @@ const SHOPS = [
 
 export default function NewJobPage() {
   const navigate = useNavigate()
+  const apiBaseUrl = useApiBaseUrl()
   const [step, setStep] = useState(1)
   const [selectedShop, setSelectedShop] = useLocalStorage('selectedShop', '')
   const [file, setFile] = useState(null)
@@ -41,19 +43,16 @@ export default function NewJobPage() {
   const submit = async () => {
     if (!selectedShop || !file) return
     setSubmitState('submitting')
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('tenantId', selectedShop)
-    fd.append('printSettings', JSON.stringify(formData))
     try {
-      const res = await fetch('http://localhost:3001/jobs', { method: 'POST', body: fd })
-      if (!res.ok) throw new Error('Failed')
-      const data = await res.json()
-      setJobId(data.jobId)
+      const data = await uploadFile(apiBaseUrl, '/api/jobs', file, {
+        tenantId: selectedShop,
+        printSettings: JSON.stringify(formData),
+      })
+      setJobId(data.job?.jobId || data.jobId)
       setSubmitState('success')
     } catch (e) {
       console.error(e)
-      alert('Could not create job. Is the API running on localhost:3001?')
+      alert(`Could not create job: ${e.message}`)
       setSubmitState('idle')
     }
   }

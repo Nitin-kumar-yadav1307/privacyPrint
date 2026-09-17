@@ -1,6 +1,5 @@
-import { createContext, useState } from 'react'
-
-const AppContext = createContext(null)
+import { useState } from 'react'
+import AppContext from './appContext.js'
 
 export function AppProvider({ children }) {
   const [apiBaseUrl, setApiBaseUrl] = useState('http://localhost:3001')
