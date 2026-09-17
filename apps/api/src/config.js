@@ -6,7 +6,7 @@
 const path = require('path')
 
 const PORT = process.env.PORT || 3001
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads')
+const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(__dirname, '../uploads'))
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
 const NODE_ENV = process.env.NODE_ENV || 'development'
 

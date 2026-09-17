@@ -5,6 +5,7 @@
  */
 
 const { JOB_STATUS } = require('../constants')
+const { removeDocument } = require('./documentStorage')
 const {
   createJob: _createJob,
   markReady,
@@ -120,8 +121,8 @@ function expireJob(jobId) {
   if (job.status !== JOB_STATUS.PRINTED) {
     return toPublic(job)
   }
+  removeDocument(job.document)
   markExpired(job)
-  // In production, the document file is also deleted from S3 here
   return toPublic(job)
 }
 
@@ -141,6 +142,7 @@ function cancelJob(jobId, tenantId, reason) {
   if (job.status !== JOB_STATUS.CREATED && job.status !== JOB_STATUS.READY) {
     return toPublic(job)
   }
+  removeDocument(job.document)
   markCancelled(job, reason)
   return toPublic(job)
 }

@@ -4,6 +4,9 @@ const { spawnSync, execFile } = require('node:child_process')
 const { promisify } = require('node:util')
 const fs = require('node:fs')
 const path = require('node:path')
+const os = require('node:os')
+const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-simulator-'))
+process.env.UPLOAD_DIR = uploadDir
 const { app } = require('../../../apps/api/src/server')
 const jobService = require('../../../apps/api/src/services/jobService')
 const { simulateJob } = require('../src/simulator')
@@ -18,7 +21,7 @@ async function runTests() {
   }
   const create = () => jobService.create({
     tenantId: 'TENANT-001', printSettings: settings,
-    document: { filename: 'synthetic.txt', originalName: 'synthetic.txt' },
+    document: { filename: 'synthetic.txt', originalName: 'synthetic.txt', path: path.join(uploadDir, 'synthetic.txt') },
   })
   const logs = []
   const options = {
@@ -99,6 +102,7 @@ async function runTests() {
     }
     console.log('All simulator checks passed')
   } finally {
+    fs.rmSync(uploadDir, { recursive: true, force: true })
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
   }
 }

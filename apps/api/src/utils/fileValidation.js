@@ -17,7 +17,7 @@ function fileFilter(req, file, cb) {
   }
 }
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads')
+const { UPLOAD_DIR } = require('../config')
 
 // Ensure the uploads directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {

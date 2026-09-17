@@ -32,4 +32,4 @@ Tests start Express on an ephemeral loopback port, verify progress and state gua
 - This is an alternative to the existing browser simulator. Use only one simulator/operator per job; the current API has no exclusive printer claim, so concurrent clients are not safe.
 - A stopped simulation leaves the job PRINTING without starting retention. Recovery/retry orchestration is not implemented.
 - Tenant query parameters provide filtering, **not authenticated authorization**. Keep this local/demo-only until server-side authentication is implemented.
-- The current API expiration/cancellation implementation changes status but does not delete uploaded files. Automatic document removal remains an outstanding Phase 8 requirement.
+- The local API now removes temporary files before marking jobs EXPIRED or CANCELLED. Failed cleanup is retried by the running expiry checker. Jobs remain in memory: restart recovery and cleanup of orphaned or rejected uploads are still outstanding.
