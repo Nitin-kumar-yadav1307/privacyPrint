@@ -4,6 +4,7 @@ import { Card, CardBody } from '../../components/Card.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
+import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
 
 const SHOPS = [
   { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
@@ -12,24 +13,23 @@ const SHOPS = [
 ]
 
 export default function JobsPage() {
+  const apiBaseUrl = useApiBaseUrl()
   const [selectedShop, setSelectedShop] = useLocalStorage('selectedShop', '')
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!selectedShop) return
-    const controller = new AbortController()
+        const controller = new AbortController()
     setTimeout(() => setLoading(true), 0)
-    fetch(`http://localhost:3001/jobs?tenantId=${selectedShop}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed')
-        return r.json()
+    fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${selectedShop}`)
+      .then((data) => setJobs(data.jobs || []))
+      .catch((e) => {
+        if (e.name !== 'AbortError') { console.error(e); setJobs([]) }
       })
-      .then((data) => setJobs(data))
-      .catch((e) => { if (e.name !== 'AbortError') setJobs([]) })
       .finally(() => setLoading(false))
     return () => controller.abort()
-  }, [selectedShop])
+  }, [selectedShop, apiBaseUrl])
 
   return (
     <Layout title="My Print Jobs">
@@ -69,7 +69,7 @@ export default function JobsPage() {
                       <span className="font-mono text-sm text-indigo-600 dark:text-indigo-400 font-medium">{job.jobId}</span>
                       <StatusBadge status={job.status} />
                     </div>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 truncate">{job.documentName}</p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 truncate">{job.document?.originalName || '—'}</p>
                     <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{job.printSettings?.copies}x {job.printSettings?.paperSize} · {job.printSettings?.color === 'color' ? 'Color' : 'B&W'} · {job.printSettings?.duplex ? 'Duplex' : 'Single-sided'}</p>
                   </div>
                   <div className="text-right shrink-0">
