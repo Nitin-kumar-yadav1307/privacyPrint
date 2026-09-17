@@ -1,5 +1,6 @@
 const { JOB_STATUS } = require('../constants')
 const jobService = require('../services/jobService')
+const { removeDocument } = require('../services/documentStorage')
 
 /**
  * GET /health
@@ -27,32 +28,32 @@ function health(req, res) {
  * @body {Object} document - Uploaded document info (from multer)
  */
 function createJob(req, res, next) {
+  let jobStored = false
+  const validationError = (message) => Object.assign(new Error(message), {
+    name: 'Validation error', statusCode: 400,
+  })
   try {
     const { tenantId, printSettings } = req.body
 
-    // Validate required fields
-    if (!tenantId) {
-      return res.status(400).json({
-        error: 'Validation error',
-        message: 'tenantId is required',
-      })
+    if (typeof tenantId !== 'string' || !tenantId.trim()) {
+      throw validationError('tenantId is required')
     }
-
     if (!req.file) {
-      return res.status(400).json({
-        error: 'Validation error',
-        message: 'A document file is required',
-      })
+      throw validationError('A document file is required')
     }
 
-    // Validate print settings
-    const settings = JSON.parse(printSettings || '{}')
+    let settings
+    try {
+      settings = JSON.parse(printSettings || '{}')
+    } catch {
+      throw validationError('printSettings must be valid JSON')
+    }
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      throw validationError('printSettings must be a JSON object')
+    }
     const errors = validatePrintSettings(settings)
     if (errors.length > 0) {
-      return res.status(400).json({
-        error: 'Validation error',
-        message: errors.join('; '),
-      })
+      throw validationError(errors.join('; '))
     }
 
     const documentInfo = {
@@ -68,12 +69,22 @@ function createJob(req, res, next) {
       printSettings: settings,
       document: documentInfo,
     })
+    jobStored = true
 
     res.status(201).json({
       success: true,
       job,
     })
   } catch (err) {
+    // Multer owns cleanup of upload errors; this handles post-upload rejection.
+    // Once a job owns the file, only its lifecycle may remove it.
+    if (req.file && !jobStored) {
+      try {
+        removeDocument(req.file)
+      } catch (cleanupError) {
+        return next(cleanupError)
+      }
+    }
     next(err)
   }
 }
