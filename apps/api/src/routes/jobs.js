@@ -28,6 +28,9 @@ router.post('/jobs/:jobId/print', jobsController.startPrint)
 
 router.post('/jobs/:jobId/complete', jobsController.completePrint)
 
+// Customer/shop cancels a job that hasn't been printed
+router.post('/jobs/:jobId/cancel', jobsController.cancelJob)
+
 // Printer simulator auto-complete
 router.post('/jobs/:jobId/autocomplete', jobsController.autoComplete)
 

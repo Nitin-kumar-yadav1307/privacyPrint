@@ -344,6 +344,44 @@ function autoComplete(req, res, next) {
   }
 }
 
+/**
+ * POST /jobs/:jobId/cancel?tenantId=<id>
+ * Customer or shop cancels a job that hasn't started printing.
+ * Optional JSON body: { "reason": "why" }
+ */
+function cancelJob(req, res, next) {
+  try {
+    const { jobId } = req.params
+    const { tenantId } = req.query
+
+    if (!tenantId) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'tenantId query parameter is required',
+      })
+    }
+
+    const reason = req.body && typeof req.body.reason === 'string' ? req.body.reason : undefined
+    const job = jobService.cancelJob(jobId, tenantId, reason)
+
+    if (!job) {
+      // Return 404 to avoid leaking job existence across tenants
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Job not found or you do not have access to this job',
+      })
+    }
+
+    res.json({
+      success: true,
+      job,
+      message: 'Job cancelled successfully',
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
 module.exports = {
   health,
   createJob,
@@ -354,5 +392,6 @@ module.exports = {
   getStatus,
   getQueue,
   autoComplete,
+  cancelJob,
   validatePrintSettings,
 }

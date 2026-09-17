@@ -181,6 +181,41 @@ async function runTests() {
   assert.strictEqual(autoOnReady.body.job.status, 'PRINTED', 'Job already PRINTED should stay PRINTED')
   console.log('✓ Test 14: Auto-complete on non-PRINTING job handled gracefully')
 
+  // Test 15: Cancel a READY job
+  const cancellable = await apiRequest('POST', '/api/jobs', null, testFilePath)
+  assert.ok([200, 201].includes(cancellable.status), 'Create job for cancel test should return 200/201')
+  const cancellableJobId = cancellable.body.job.jobId
+  const cancelled = await apiRequest('POST', `/api/jobs/${cancellableJobId}/cancel?tenantId=TENANT-001`, {
+    reason: 'Customer changed their mind',
+  })
+  assert.strictEqual(cancelled.status, 200)
+  assert.strictEqual(cancelled.body.job.status, 'CANCELLED')
+  assert.strictEqual(cancelled.body.job.cancellationReason, 'Customer changed their mind')
+  console.log('✓ Test 15: Cancel job passes')
+
+  // Test 16: Cross-tenant cancel denial
+  const crossCancel = await apiRequest('POST', `/api/jobs/${cancellableJobId}/cancel?tenantId=TENANT-002`)
+  assert.strictEqual(crossCancel.status, 404, 'Cross-tenant cancel should return 404')
+  console.log('✓ Test 16: Cross-tenant cancel denial works')
+
+  // Test 17: Cancel a PRINTING job is gracefully refused
+  const printing = await apiRequest('POST', '/api/jobs', null, testFilePath)
+  assert.ok([200, 201].includes(printing.status), 'Create job for print-cancel test should return 200/201')
+  const printingJobId = printing.body.job.jobId
+  const startedPrint = await apiRequest('POST', `/api/jobs/${printingJobId}/print?tenantId=TENANT-001`)
+  assert.strictEqual(startedPrint.body.job.status, 'PRINTING', 'Job should be PRINTING before cancel attempt')
+  const cancelPrinting = await apiRequest('POST', `/api/jobs/${printingJobId}/cancel?tenantId=TENANT-001`)
+  assert.strictEqual(cancelPrinting.status, 200)
+  assert.strictEqual(cancelPrinting.body.job.status, 'PRINTING', 'PRINTING job should not be cancellable')
+  console.log('✓ Test 17: Cancel on PRINTING job gracefully refused')
+
+  // Test 18: Cancel an already-CANCELLED job is idempotent (stays CANCELLED)
+  const recancel = await apiRequest('POST', `/api/jobs/${cancellableJobId}/cancel?tenantId=TENANT-001`)
+  assert.strictEqual(recancel.status, 200)
+  assert.strictEqual(recancel.body.job.status, 'CANCELLED', 'CANCELLED job should stay CANCELLED')
+  assert.strictEqual(recancel.body.job.cancellationReason, 'Customer changed their mind', 'Original reason should be preserved')
+  console.log('✓ Test 18: Re-cancel on CANCELLED job is idempotent')
+
   // Cleanup
   fs.unlinkSync(testFilePath)
 

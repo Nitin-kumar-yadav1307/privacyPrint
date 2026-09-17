@@ -137,7 +137,8 @@ function cancelJob(jobId, tenantId, reason) {
   if (!job || job.tenantId !== tenantId) {
     return null
   }
-  if (job.status === JOB_STATUS.PRINTING || job.status === JOB_STATUS.PRINTED) {
+  // Only jobs that haven't entered printing can be cancelled
+  if (job.status !== JOB_STATUS.CREATED && job.status !== JOB_STATUS.READY) {
     return toPublic(job)
   }
   markCancelled(job, reason)

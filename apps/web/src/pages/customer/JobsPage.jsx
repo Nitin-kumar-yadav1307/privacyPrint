@@ -20,6 +20,24 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false)
 
   const [error, setError] = useState('')
+  const [cancellingId, setCancellingId] = useState(null)
+
+  const cancelJob = async (job) => {
+    if (cancellingId) return
+    setCancellingId(job.jobId)
+    try {
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/cancel?tenantId=${encodeURIComponent(selectedShop)}`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Cancelled by customer before printing' }),
+      })
+      setJobs((prev) => prev.map((j) => (j.jobId === job.jobId ? data.job : j)))
+      setError('')
+    } catch (e) {
+      setError(`Cancel failed: ${e.message}`)
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
   const fetchJobs = useCallback(async (signal) => {
     if (!selectedShop) return
@@ -91,6 +109,13 @@ export default function JobsPage() {
                   <div className="text-right shrink-0">
                     {job.expiresAt && <p className="text-xs text-gray-400 dark:text-gray-500">Expires <span className="font-mono">{new Date(job.expiresAt).toLocaleString()}</span></p>}
                     {job.printedAt && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Printed <span className="font-mono">{new Date(job.printedAt).toLocaleString()}</span></p>}
+                    {selectedShop && (job.status === 'READY' || job.status === 'CREATED') && (
+                      <div className="mt-2">
+                        <Button variant="secondary" size="sm" disabled={!!cancellingId} onClick={() => cancelJob(job)}>
+                          {cancellingId === job.jobId ? 'Cancelling…' : 'Cancel'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardBody>
               </Card>
