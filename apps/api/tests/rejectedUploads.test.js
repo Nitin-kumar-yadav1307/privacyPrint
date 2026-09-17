@@ -4,8 +4,10 @@ const os = require('node:os')
 const path = require('node:path')
 const { once } = require('node:events')
 
-const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-rejected-'))
+const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-rejected-'))
+const uploadDir = path.join(testRoot, 'uploads')
 process.env.UPLOAD_DIR = uploadDir
+process.env.DATA_DIR = path.join(testRoot, 'data')
 const { app } = require('../src/server')
 const jobs = require('../src/services/jobService')
 const { createJob } = require('../src/controllers/jobsController')
@@ -98,7 +100,7 @@ async function runTests() {
     console.log('All rejected-upload checks passed')
   } finally {
     await new Promise((resolve) => server.close(resolve))
-    fs.rmSync(uploadDir, { recursive: true, force: true })
+    fs.rmSync(testRoot, { recursive: true, force: true })
   }
 }
 

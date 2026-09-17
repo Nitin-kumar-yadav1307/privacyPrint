@@ -6,6 +6,7 @@ const path = require('node:path')
 // Isolate all synthetic files from real development uploads.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-cleanup-'))
 process.env.UPLOAD_DIR = path.join(root, 'uploads')
+process.env.DATA_DIR = path.join(root, 'data')
 fs.mkdirSync(process.env.UPLOAD_DIR)
 const { UPLOAD_DIR } = require('../src/config')
 const { removeDocument } = require('../src/services/documentStorage')

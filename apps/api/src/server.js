@@ -31,6 +31,7 @@ app.use(errorHandler)
 
 // Start server and background processes only when run directly
 if (require.main === module) {
+  require('./services/recoveryService').recoverJobs()
   startExpiryChecker()
 
   const server = app.listen(PORT, () => {

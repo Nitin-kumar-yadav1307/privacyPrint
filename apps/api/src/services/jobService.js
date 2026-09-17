@@ -1,10 +1,10 @@
 /**
- * In-memory job store.
- * For local development this provides persistence within a single server session.
- * In production (Phase 9+) this will be replaced by DynamoDB.
+ * Local single-process job store with atomic metadata snapshots.
+ * Jobs are restored on restart; production will use DynamoDB.
  */
 
 const { JOB_STATUS } = require('../constants')
+const { DATA_DIR } = require('../config')
 const { removeDocument } = require('./documentStorage')
 const {
   createJob: _createJob,
@@ -17,7 +17,26 @@ const {
   toPublic,
 } = require('../models/Job')
 
-const jobs = new Map()
+const { openJobStore } = require('./jobStore')
+const { jobs, save } = openJobStore(DATA_DIR)
+
+function update(job, transition) {
+  const previous = structuredClone(job)
+  try {
+    transition(job)
+    save()
+  } catch (error) {
+    for (const key of Object.keys(job)) delete job[key]
+    Object.assign(job, previous)
+    throw error
+  }
+  return toPublic(job)
+}
+
+function failJob(jobId, reason) {
+  const job = jobs.get(jobId)
+  return job ? update(job, (record) => markFailed(record, reason)) : null
+}
 
 /**
  * Create and store a new job.
@@ -29,6 +48,12 @@ function create(data) {
   // Mark as READY once stored
   markReady(job)
   jobs.set(job.jobId, job)
+  try {
+    save()
+  } catch (error) {
+    jobs.delete(job.jobId)
+    throw error
+  }
   return toPublic(job)
 }
 
@@ -85,8 +110,7 @@ function startPrinting(jobId, tenantId) {
   if (job.status !== JOB_STATUS.READY) {
     return toPublic(job)
   }
-  markPrinting(job)
-  return toPublic(job)
+  return update(job, markPrinting)
 }
 
 /**
@@ -104,8 +128,7 @@ function markPrinted(jobId, tenantId) {
     return toPublic(job)
   }
   const retentionMinutes = job.printSettings.retentionMinutes
-  _markPrinted(job, retentionMinutes)
-  return toPublic(job)
+  return update(job, (record) => _markPrinted(record, retentionMinutes))
 }
 
 /**
@@ -122,8 +145,7 @@ function expireJob(jobId) {
     return toPublic(job)
   }
   removeDocument(job.document)
-  markExpired(job)
-  return toPublic(job)
+  return update(job, markExpired)
 }
 
 /**
@@ -143,8 +165,7 @@ function cancelJob(jobId, tenantId, reason) {
     return toPublic(job)
   }
   removeDocument(job.document)
-  markCancelled(job, reason)
-  return toPublic(job)
+  return update(job, (record) => markCancelled(record, reason))
 }
 
 /**
@@ -210,8 +231,7 @@ function autoCompletePrint(jobId, tenantId) {
   if (job.status !== JOB_STATUS.PRINTING) {
     return toPublic(job)
   }
-  _markPrinted(job, job.printSettings.retentionMinutes)
-  return toPublic(job)
+  return markPrinted(jobId, tenantId)
 }
 
 module.exports = {
@@ -226,6 +246,7 @@ module.exports = {
   autoCompletePrint,
   expireJob,
   cancelJob,
+  failJob,
   allJobs,
   getRaw,
 }

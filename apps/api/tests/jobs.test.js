@@ -6,6 +6,11 @@ const assert = require('assert')
 const http = require('http')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
+const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-api-'))
+process.env.UPLOAD_DIR = path.join(testRoot, 'uploads')
+process.env.DATA_DIR = path.join(testRoot, 'data')
+process.on('exit', () => fs.rmSync(testRoot, { recursive: true, force: true }))
 const { app } = require('../src/server')
 
 const PORT = 3991 // test port to avoid conflicts

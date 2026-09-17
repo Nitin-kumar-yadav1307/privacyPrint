@@ -7,6 +7,7 @@ const path = require('node:path')
 const os = require('node:os')
 const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-simulator-'))
 process.env.UPLOAD_DIR = uploadDir
+process.env.DATA_DIR = path.join(uploadDir, 'metadata')
 const { app } = require('../../../apps/api/src/server')
 const jobService = require('../../../apps/api/src/services/jobService')
 const { simulateJob } = require('../src/simulator')

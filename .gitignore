@@ -14,6 +14,9 @@ build/
 uploads/*
 !uploads/.gitkeep
 
+# Local private job metadata
+apps/api/data/
+
 # Databases
 *.db
 *.sqlite
