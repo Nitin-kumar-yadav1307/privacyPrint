@@ -73,7 +73,7 @@ async function runTests() {
     try {
       jobs.create = () => { throw failure }
       fs.writeFileSync(temporaryPath, 'Synthetic failure test')
-      createJob(req, {}, (error) => { forwarded = error })
+      await createJob(req, {}, (error) => { forwarded = error })
       assert.equal(forwarded, failure)
       assert.ok(!fs.existsSync(temporaryPath))
     } finally {
@@ -82,7 +82,7 @@ async function runTests() {
     console.log('✓ Store failure removes the unowned upload')
 
     fs.mkdirSync(temporaryPath)
-    createJob({ ...req, body: {} }, {}, (error) => { forwarded = error })
+    await createJob({ ...req, body: {} }, {}, (error) => { forwarded = error })
     assert.equal(forwarded.message, 'Temporary document removal failed')
     assert.equal(forwarded.statusCode, undefined, 'Cleanup failure must not masquerade as validation success')
     fs.rmdirSync(temporaryPath)
@@ -90,7 +90,7 @@ async function runTests() {
 
     fs.writeFileSync(temporaryPath, 'Synthetic response failure test')
     const responseFailure = new Error('Response failed after storing job')
-    createJob(req, {
+    await createJob(req, {
       status: () => ({ json: () => { throw responseFailure } }),
     }, (error) => { forwarded = error })
     assert.equal(forwarded, responseFailure)

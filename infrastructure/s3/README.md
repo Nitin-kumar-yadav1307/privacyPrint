@@ -70,9 +70,12 @@ requests SSE-S3, and returns remote metadata only after the client succeeds.
 Failures propagate without falling back to local success. Tenant key prefixes
 are not authorization. The caller retains responsibility for staging-file cleanup.
 
-**This uploader is not wired to the API.** Remote metadata must not be passed to
-the current local-only deletion or recovery code. The next integration must
-coordinate job persistence, staging cleanup, S3 deletion, and restart recovery.
+**The API now awaits this uploader in local mode only.** It creates a job only
+once the uploader confirms the local file and uses the returned local metadata.
+Upload failures create no job and trigger staging-file cleanup. Remote metadata
+must not be passed to the current local-only model, deletion or recovery code.
+The next integration must coordinate remote metadata persistence, staging cleanup,
+S3 deletion, and restart recovery.
 Network errors can occur after S3 accepts an object, so remote orphan cleanup
 also remains necessary. This is not a deployed or end-to-end S3 integration.
 

@@ -1,6 +1,10 @@
 const { JOB_STATUS } = require('../constants')
 const jobService = require('../services/jobService')
 const { removeDocument } = require('../services/documentStorage')
+const { createDocumentUploader } = require('../services/documentUploader')
+
+// Keep local storage until remote deletion and recovery are integrated.
+const uploadDocument = createDocumentUploader()
 
 /**
  * GET /health
@@ -27,7 +31,7 @@ function health(req, res) {
  * @body {Object} printSettings - Customer print settings
  * @body {Object} document - Uploaded document info (from multer)
  */
-function createJob(req, res, next) {
+async function createJob(req, res, next) {
   let jobStored = false
   const validationError = (message) => Object.assign(new Error(message), {
     name: 'Validation error', statusCode: 400,
@@ -57,9 +61,7 @@ function createJob(req, res, next) {
     }
 
     const documentInfo = {
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      path: req.file.path,
+      ...await uploadDocument(req.file, tenantId),
       mimetype: req.file.mimetype,
       size: req.file.size,
     }
