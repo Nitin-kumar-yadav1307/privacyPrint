@@ -1,0 +1,59 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "PrivacyPrint private temporary document storage",
+  "Resources": {
+    "DocumentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            { "ServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [{ "ObjectOwnership": "BucketOwnerEnforced" }]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [{
+            "Id": "AbortIncompleteUploads",
+            "Status": "Enabled",
+            "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+          }]
+        },
+        "Tags": [{ "Key": "Project", "Value": "PrivacyPrint" }]
+      }
+    },
+    "DocumentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "DocumentBucket" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Sid": "DenyInsecureTransport",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+              { "Fn::GetAtt": ["DocumentBucket", "Arn"] },
+              { "Fn::Sub": "${DocumentBucket.Arn}/*" }
+            ],
+            "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+          }]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "DocumentBucketName": { "Value": { "Ref": "DocumentBucket" } },
+    "DocumentBucketArn": { "Value": { "Fn::GetAtt": ["DocumentBucket", "Arn"] } }
+  }
+}
