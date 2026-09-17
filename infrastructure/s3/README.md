@@ -56,3 +56,28 @@ the AWS CLI is not installed. Credential availability has not been checked.
 After deployment, verify bucket encryption, ownership controls, public-access
 blocks and the policy in AWS before connecting an application. Do not interpret
 passing local tests as evidence of a deployed or working AWS integration.
+
+## Preparatory uploader boundary
+
+`/home/nitin/Documents/programming/hackathon/privacyPrint/apps/api/src/services/documentUploader.js`
+exports `createDocumentUploader(options)`. Local storage is the default. S3 mode
+requires an explicit bucket and an injected async `putObject` client accepting
+S3-style request fields. No AWS SDK adapter is installed or configured yet.
+Offline tests use a fake client and do not contact AWS.
+
+The uploader checks bounded regular staging files, generates opaque object keys,
+requests SSE-S3, and returns remote metadata only after the client succeeds.
+Failures propagate without falling back to local success. Tenant key prefixes
+are not authorization. The caller retains responsibility for staging-file cleanup.
+
+**This uploader is not wired to the API.** Remote metadata must not be passed to
+the current local-only deletion or recovery code. The next integration must
+coordinate job persistence, staging cleanup, S3 deletion, and restart recovery.
+Network errors can occur after S3 accepts an object, so remote orphan cleanup
+also remains necessary. This is not a deployed or end-to-end S3 integration.
+
+Run the offline uploader and API regression tests:
+
+```sh
+npm --prefix /home/nitin/Documents/programming/hackathon/privacyPrint/apps/api test
+```

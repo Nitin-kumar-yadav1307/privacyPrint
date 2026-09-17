@@ -8,7 +8,7 @@
         "start": "node src/server.js",
         "dev": "node src/server.js",
         "lint": "echo 'No linter configured' && exit 0",
-        "test": "node tests/restart.test.js && node tests/cleanup.test.js && node tests/rejectedUploads.test.js && node tests/jobs.test.js"
+        "test": "node --test tests/documentUploader.test.js && node tests/restart.test.js && node tests/cleanup.test.js && node tests/rejectedUploads.test.js && node tests/jobs.test.js"
     },
     "keywords": [],
     "author": "",
