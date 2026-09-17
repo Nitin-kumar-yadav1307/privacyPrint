@@ -114,6 +114,19 @@ try {
   assert.ok(fs.existsSync(outside), 'Unlink must not follow file symlinks')
   assert.ok(fs.existsSync(keep))
   console.log('✓ Storage boundary and symlink-target protection')
+
+  const tagged = create()
+  for (const storage of ['s3', 'unknown', null]) {
+    tagged.document.storage = storage
+    assert.throws(() => jobs.cancelJob(tagged.jobId, tagged.tenantId), /cannot remove/)
+    assert.equal(tagged.status, 'READY')
+    assert.ok(fs.existsSync(tagged.document.path))
+  }
+  tagged.document.storage = 'local'
+  jobs.cancelJob(tagged.jobId, tagged.tenantId)
+  assert.equal(tagged.status, 'CANCELLED')
+  assert.ok(!fs.existsSync(tagged.document.path))
+  console.log('✓ Local deletion rejects non-local metadata without deleting files or changing state')
   console.log('All cleanup checks passed')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })

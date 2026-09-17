@@ -4,6 +4,9 @@ const { UPLOAD_DIR } = require('../config')
 
 /** Remove only a direct child of the configured private upload directory. */
 function removeDocument(document) {
+  if (document?.storage !== undefined && document.storage !== 'local') {
+    throw new Error('Local deletion cannot remove a remote document')
+  }
   if (typeof document?.path !== 'string' || !document.path) {
     throw new Error('Document storage path is missing')
   }
