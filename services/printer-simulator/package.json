@@ -1,0 +1,14 @@
+{
+  "name": "privacyprint-printer-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local demo printer simulator (no physical printing)",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node tests/simulator.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
