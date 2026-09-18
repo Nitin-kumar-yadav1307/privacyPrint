@@ -1,0 +1,14 @@
+{
+  "name": "privacyprint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PrivacyPrint — privacy-first, multi-tenant print-job platform (monorepo root).",
+  "scripts": {
+    "install:all": "npm --prefix apps/api install && npm --prefix apps/web install",
+    "dev": "npm --prefix apps/api run start & npm --prefix apps/web run dev & wait",
+    "dev:api": "npm --prefix apps/api run start",
+    "dev:web": "npm --prefix apps/web run dev",
+    "test": "npm --prefix apps/api test && npm --prefix services/print-connector test"
+  },
+  "license": "UNLICENSED"
+}
