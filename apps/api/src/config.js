@@ -15,13 +15,15 @@ const NODE_ENV = process.env.NODE_ENV || 'development'
 /**
  * Session secret for shop tokens.
  *
- * AUTH_SECRET must be supplied by the environment in any shared or deployed
- * environment. The generated fallback exists only so a local demo boots without
- * configuration: it is random per process, so restarting the API invalidates all
- * shop sessions. It is never a committed value.
+ * In development mode, a generated secret is acceptable for local demo use only.
+ * In production or any shared/deployed environment, AUTH_SECRET must be set in
+ * the environment and must never be generated silently.
  */
-const AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex')
-const AUTH_SECRET_SOURCE = process.env.AUTH_SECRET ? 'env' : 'generated'
+const isDevelopment = (process.env.NODE_ENV || 'development') === 'development'
+const AUTH_SECRET = process.env.AUTH_SECRET || (isDevelopment ? crypto.randomBytes(32).toString('hex') : (() => {
+  throw new Error('AUTH_SECRET must be set in the environment for non-development deployments')
+})())
+const AUTH_SECRET_SOURCE = process.env.AUTH_SECRET ? 'env' : (isDevelopment ? 'generated' : 'missing')
 const SESSION_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 3600)
 
 /**
