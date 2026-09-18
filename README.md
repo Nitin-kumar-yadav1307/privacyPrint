@@ -103,6 +103,40 @@ The next production steps, aligned with the plan, are:
 - Keep secrets in environment variables, never in source control
 - Log job lifecycle transitions for auditability
 
+## Run the full demo locally (zero credentials, zero cost)
+
+Three terminals:
+
+```bash
+# 1) API
+cd apps/api && npm install && npm start        # http://localhost:3001
+
+# 2) Web app
+cd apps/web && npm install && npm run dev      # http://localhost:5173
+
+# 3) Print connector (PDF fallback — no printer needed)
+cd services/print-connector
+SHOP_TOKEN=<token from shop login> PRINT_MODE=pdf POLL_INTERVAL_MS=1000 npm start
+```
+
+Demo walkthrough:
+
+1. **Customer**: open the web app, pick a shop, upload any PDF, set copies /
+   retention, submit. A job ID is generated.
+2. **Shop**: open `/shop`, select the shop, sign in with the demo passcode
+   `privacyprint-demo`. The dashboard shows the job; a green
+   **● Connector online** badge confirms the connector's heartbeat.
+3. **Print**: click **PRINT**. The connector downloads the document and
+   produces `services/print-connector/output/<jobId>-print.pdf` plus a
+   settings manifest. The job turns **PRINTED** and the retention countdown
+   starts (demo TTL is accelerated).
+4. **Expiry**: when the countdown hits zero the job becomes **EXPIRED** and
+   the temporary document is deleted. The customer can open the job's
+   **Privacy receipt** to see the full lifecycle record.
+
+Environment templates: `apps/api/.env.example`,
+`services/print-connector/.env.example` (copy to `.env`, already git-ignored).
+
 ## Print Connector
 
 A shop-side agent (`services/print-connector/`) bridges the print queue to a
