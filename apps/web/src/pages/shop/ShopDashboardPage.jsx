@@ -8,6 +8,7 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { usePolling } from '../../hooks/usePolling.js'
 import { useTenants } from '../../hooks/useTenants.js'
 import { useApiBaseUrl, fetchJSON, shopAuthHeaders, shopLogout } from '../../services/api.js'
+import { formatCountdown } from '../../utils/time.js'
 
 export default function ShopDashboardPage() {
   const navigate = useNavigate()
@@ -21,6 +22,12 @@ export default function ShopDashboardPage() {
 
   const [queue, setQueue] = useState([])
   const [error, setError] = useState('')
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const fetchJobs = useCallback(async (signal) => {
     if (!shopTenant) return
@@ -208,7 +215,12 @@ export default function ShopDashboardPage() {
                     ) : (
                       <div className="text-right shrink-0">
                         {job.printedAt && <p className="text-xs text-gray-400 dark:text-gray-500">Printed {new Date(job.printedAt).toLocaleString()}</p>}
-                        {job.expiresAt && <p className="text-xs text-gray-400 dark:text-gray-500">Expires {new Date(job.expiresAt).toLocaleString()}</p>}
+                        {job.expiresAt && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            Expires {new Date(job.expiresAt).toLocaleString()} 
+                            <span className="block text-indigo-600 dark:text-indigo-400">{formatCountdown(job.expiresAt, now)}</span>
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -219,7 +231,7 @@ export default function ShopDashboardPage() {
                     <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Paper</p><p className="font-medium text-gray-900 dark:text-white">{job.printSettings?.paperSize ?? '—'} {job.printSettings?.orientation ?? ''}</p></div>
                     <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Duplex</p><p className="font-medium text-gray-900 dark:text-white">{job.printSettings?.duplex ? 'Yes' : 'No'}</p></div>
                     <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Orientation</p><p className="font-medium text-gray-900 dark:text-white">{job.printSettings?.orientation ?? '—'}</p></div>
-                    <div className="col-span-2"><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Retention</p><p className="font-medium text-gray-900 dark:text-white">{job.printSettings?.retentionMinutes ?? '—'} min</p></div>
+                    <div className="col-span-2"><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Retention</p><p className="font-medium text-gray-900 dark:text-white">{job.printSettings?.retentionMinutes ?? '—'} min {job.expiresAt ? `· ${formatCountdown(job.expiresAt, now)}` : ''}</p></div>
                   </div>
                 </CardBody>
               </Card>

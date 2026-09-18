@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Layout } from '../../components/Layout.jsx'
 import { Card, CardBody } from '../../components/Card.jsx'
 import { StatusBadge } from '../../components/StatusBadge.jsx'
@@ -7,6 +7,7 @@ import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { usePolling } from '../../hooks/usePolling.js'
 import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
 import { useTenants } from '../../hooks/useTenants.js'
+import { formatCountdown } from '../../utils/time.js'
 
 export default function JobsPage() {
   const apiBaseUrl = useApiBaseUrl()
@@ -35,6 +36,12 @@ export default function JobsPage() {
       setCancellingId(null)
     }
   }
+
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const fetchJobs = useCallback(async (signal) => {
     if (!selectedShop) return
@@ -107,7 +114,12 @@ export default function JobsPage() {
                     <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{job.printSettings?.copies}x {job.printSettings?.paperSize} · {job.printSettings?.color === 'color' ? 'Color' : 'B&W'} · {job.printSettings?.duplex ? 'Duplex' : 'Single-sided'}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    {job.expiresAt && <p className="text-xs text-gray-400 dark:text-gray-500">Expires <span className="font-mono">{new Date(job.expiresAt).toLocaleString()}</span></p>}
+                    {job.expiresAt && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        Expires <span className="font-mono">{new Date(job.expiresAt).toLocaleString()}</span>
+                        <span className="block mt-1 text-indigo-600 dark:text-indigo-400">{formatCountdown(job.expiresAt, now)}</span>
+                      </p>
+                    )}
                     {job.printedAt && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Printed <span className="font-mono">{new Date(job.printedAt).toLocaleString()}</span></p>}
                     {selectedShop && (job.status === 'READY' || job.status === 'CREATED') && (
                       <div className="mt-2">
