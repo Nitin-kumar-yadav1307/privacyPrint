@@ -46,6 +46,25 @@ Customer → API → Shop clicks PRINT (job → PRINTING)
   environment variables also work in PowerShell:
   `$env:SHOP_TOKEN="..."; npm start`.
 
+## Windows real printing
+
+Physical printing works on Windows too, via **SumatraPDF** (the standard
+silent-command-line PDF printer):
+
+1. Download the portable `SumatraPDF.exe` (no installer needed).
+2. Put it in `PATH`, or point `WIN_PRINT_TOOL` at its full path.
+3. The printer must be installed on Windows (Settings → Printers) —
+   `auto` mode detects it, or set `PRINTER_NAME`.
+
+Settings mapping: copies (`2x`), page ranges (`1-2`), duplex/simplex, paper
+size, and orientation are all passed as a whitelisted `-print-settings`
+string via an argument-array `spawn` — never a shell command. Note: very old
+SumatraPDF versions may ignore the portrait/landscape token; upgrade if
+orientation does not apply.
+
+`PRINT_MODE` values: `auto` (detects CUPS on Linux/macOS, SumatraPDF on
+Windows, PDF fallback otherwise) · `cups` · `windows` · `pdf`.
+
 ## Setup (Linux / CUPS)
 
 1. Install CUPS: `sudo apt install cups` (or your distro equivalent).

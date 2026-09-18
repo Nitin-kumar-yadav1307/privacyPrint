@@ -114,6 +114,46 @@ test('poller never prints the same job twice and cleans up temp files', async ()
   fs.rmSync(dir, { recursive: true, force: true })
 })
 
+test('Windows SumatraPDF settings string maps print settings exactly', () => {
+  const { buildPrintSettings } = require('../src/windowsPrinter')
+  assert.equal(buildPrintSettings(SETTINGS), '2x,1-2,duplex,paper=a4,portrait')
+  assert.equal(
+    buildPrintSettings({ ...SETTINGS, copies: 1, pages: 'all', duplex: false, orientation: 'landscape' }),
+    'simplex,paper=a4,landscape',
+  )
+  assert.throws(() => buildPrintSettings({ ...SETTINGS, copies: 500 }))
+  assert.throws(() => buildPrintSettings({ ...SETTINGS, pages: '1 && del /q *' }))
+})
+
+test('Windows print invocation uses argument arrays, never a shell string', () => {
+  const { buildPrintArgs } = require('../src/windowsPrinter')
+  const args = buildPrintArgs('C:\\Tools\\SumatraPDF.exe', 'HP LaserJet', SETTINGS, 'C:\\tmp\\doc.pdf')
+  assert.deepEqual(args, [
+    'C:\\Tools\\SumatraPDF.exe',
+    '-print-to', 'HP LaserJet',
+    '-silent',
+    '-exit-when-done',
+    '-print-settings', '2x,1-2,duplex,paper=a4,portrait',
+    'C:\\tmp\\doc.pdf',
+  ])
+})
+
+test('Windows printer discovery parser handles names with defaults', () => {
+  const { parsePrinters } = require('../src/windowsPrinter')
+  const parsed = parsePrinters('HP LaserJet|True\nMicrosoft Print to PDF|False\n\n')
+  assert.deepEqual(parsed.printers, ['HP LaserJet', 'Microsoft Print to PDF'])
+  assert.equal(parsed.defaultPrinter, 'HP LaserJet')
+})
+
+test('auto mode selects per platform: Windows tool on win32, CUPS elsewhere, PDF last', () => {
+  const { selectAutoMode } = require('../src/printerService')
+  assert.equal(selectAutoMode('win32', { cupsAvailable: false, windowsAvailable: true }), 'windows')
+  assert.equal(selectAutoMode('win32', { cupsAvailable: false, windowsAvailable: false }), 'pdf')
+  assert.equal(selectAutoMode('linux', { cupsAvailable: true, windowsAvailable: false }), 'cups')
+  assert.equal(selectAutoMode('linux', { cupsAvailable: false, windowsAvailable: false }), 'pdf')
+  assert.equal(selectAutoMode('darwin', { cupsAvailable: true, windowsAvailable: false }), 'cups')
+})
+
 test('print failure is reported as PRINT_FAILED, not success', async () => {
   const completed = []
   const api = {
