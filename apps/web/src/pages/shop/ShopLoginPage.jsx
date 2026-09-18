@@ -4,17 +4,13 @@ import { Layout } from '../../components/Layout.jsx'
 import { Button } from '../../components/Button.jsx'
 import { Card, CardBody } from '../../components/Card.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
-
-const SHOPS = [
-  { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
-  { id: 'TENANT-002', name: 'Express Prints Bangalore', code: 'SHOP-BLR-001' },
-  { id: 'TENANT-003', name: 'PrintHub Delhi', code: 'SHOP-DEL-001' },
-]
+import { useTenants } from '../../hooks/useTenants.js'
 
 export default function ShopLoginPage() {
   const navigate = useNavigate()
   const [selectedShop, setSelectedShop] = useLocalStorage('shopTenant', '')
   const [loggingIn, setLoggingIn] = useState(false)
+  const { tenants, loading: shopsLoading, error: shopsError } = useTenants()
 
   const handleLogin = async () => {
     if (!selectedShop) return
@@ -44,7 +40,20 @@ export default function ShopLoginPage() {
                 Select your shop
               </label>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {SHOPS.map((shop) => (
+                {shopsLoading && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 py-2">Loading shops…</p>
+                )}
+                {shopsError && (
+                  <p role="alert" className="text-sm text-red-600 dark:text-red-400 py-2">
+                    Could not load shops: {shopsError}
+                  </p>
+                )}
+                {!shopsLoading && !shopsError && tenants.length === 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
+                    No print shops are available right now.
+                  </p>
+                )}
+                {tenants.map((shop) => (
                   <label
                     key={shop.id}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${

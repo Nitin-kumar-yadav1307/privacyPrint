@@ -2,6 +2,8 @@ const { JOB_STATUS } = require('../constants')
 const jobService = require('../services/jobService')
 const { removeDocument } = require('../services/documentStorage')
 const { createDocumentUploader } = require('../services/documentUploader')
+const tenantService = require('../services/tenantService')
+const { TENANT_STATUS } = require('../models/Tenant')
 
 // Keep local storage until remote deletion and recovery are integrated.
 const uploadDocument = createDocumentUploader()
@@ -27,21 +29,34 @@ function health(req, res) {
  * but in the full implementation it will come from an authenticated
  * session or signed token (server-side trusted).
  *
+ * The tenantId is validated against the shop registry so a job can never
+ * reference an unknown or inactive shop. This is still request input, not
+ * proof of identity: real tenant authorization comes in a later phase.
+ *
  * @body {string} tenantId - The shop/tenant identifier
  * @body {Object} printSettings - Customer print settings
  * @body {Object} document - Uploaded document info (from multer)
  */
 async function createJob(req, res, next) {
   let jobStored = false
-  const validationError = (message) => Object.assign(new Error(message), {
-    name: 'Validation error', statusCode: 400,
-  })
+  const httpError = (name, message, statusCode) => Object.assign(new Error(message), { name, statusCode })
+  const validationError = (message) => httpError('Validation error', message, 400)
   try {
     const { tenantId, printSettings } = req.body
 
     if (typeof tenantId !== 'string' || !tenantId.trim()) {
       throw validationError('tenantId is required')
     }
+
+    // Every job must belong to a known, active print shop.
+    const tenant = tenantService.findTenant(tenantId)
+    if (!tenant) {
+      throw httpError('Not found', 'Unknown print shop', 404)
+    }
+    if (tenant.status !== TENANT_STATUS.ACTIVE) {
+      throw httpError('Forbidden', 'Print shop is not active', 403)
+    }
+
     if (!req.file) {
       throw validationError('A document file is required')
     }
@@ -61,13 +76,13 @@ async function createJob(req, res, next) {
     }
 
     const documentInfo = {
-      ...await uploadDocument(req.file, tenantId),
+      ...await uploadDocument(req.file, tenant.id),
       mimetype: req.file.mimetype,
       size: req.file.size,
     }
 
     const job = jobService.create({
-      tenantId,
+      tenantId: tenant.id,
       printSettings: settings,
       document: documentInfo,
     })

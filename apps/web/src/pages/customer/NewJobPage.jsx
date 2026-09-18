@@ -7,16 +7,12 @@ import { Input, Select } from '../../components/Input.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { RETENTION_OPTIONS } from '../../constants/index.js'
 import { useApiBaseUrl, uploadFile } from '../../services/api.js'
-
-const SHOPS = [
-  { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
-  { id: 'TENANT-002', name: 'Express Prints Bangalore', code: 'SHOP-BLR-001' },
-  { id: 'TENANT-003', name: 'PrintHub Delhi', code: 'SHOP-DEL-001' },
-]
+import { useTenants } from '../../hooks/useTenants.js'
 
 export default function NewJobPage() {
   const navigate = useNavigate()
   const apiBaseUrl = useApiBaseUrl()
+  const { tenants, loading: shopsLoading, error: shopsError, getTenant } = useTenants()
   const [step, setStep] = useState(1)
   const [selectedShop, setSelectedShop] = useLocalStorage('selectedShop', '')
   const [file, setFile] = useState(null)
@@ -39,6 +35,7 @@ export default function NewJobPage() {
   }
   const update = (k, v) => setFormData((p) => ({ ...p, [k]: v }))
   const canProceed = step === 1 ? selectedShop !== '' && file !== null : true
+  const selectedTenant = getTenant(selectedShop)
 
   const submit = async () => {
     if (!selectedShop || !file) return
@@ -74,16 +71,18 @@ export default function NewJobPage() {
         {step === 1 && (
           <div className="space-y-6">
             <Select label="Select Print Shop" name="shop" value={selectedShop}
-              options={SHOPS.map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
+              options={tenants.map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
               onChange={(e) => setSelectedShop(e.target.value)} required
               error={!selectedShop ? 'Please select a shop' : ''} />
+            {shopsLoading && <p className="text-xs text-gray-500 dark:text-gray-400">Loading print shops…</p>}
+            {shopsError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">Could not load print shops: {shopsError}</p>}
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload Document <span className="text-red-500 ml-0.5">*</span></label>
               <input type="file" onChange={handleFile}
                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 dark:hover:file:bg-indigo-900/50 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2" />
               {file && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Selected: <span className="font-medium">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)</p>}
             </div>
-            <div className="flex justify-end"><Button onClick={() => setStep(2)} disabled={!canProceed()} fullWidth>Continue</Button></div>
+            <div className="flex justify-end"><Button onClick={() => setStep(2)} disabled={!canProceed} fullWidth>Continue</Button></div>
           </div>
         )}
 
@@ -129,7 +128,7 @@ export default function NewJobPage() {
             <Card>
               <CardHeader><h3 className="font-semibold text-gray-900 dark:text-white">Job Summary</h3></CardHeader>
               <CardBody className="space-y-3 text-left">
-                <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Print Shop</p><p className="font-medium text-gray-900 dark:text-white">{SHOPS.find((s) => s.id === selectedShop)?.name || '—'} <span className="text-sm text-gray-500">({SHOPS.find((s) => s.id === selectedShop)?.code})</span></p></div>
+                <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Print Shop</p><p className="font-medium text-gray-900 dark:text-white">{selectedTenant?.name || '—'} <span className="text-sm text-gray-500">({selectedTenant?.code})</span></p></div>
                 <div><p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Document</p><p className="font-medium text-gray-900 dark:text-white">{file?.name || '—'}</p></div>
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-3 mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Copies</span><span className="font-medium text-gray-900 dark:text-white">{formData.copies}</span>

@@ -6,18 +6,14 @@ import { StatusBadge } from '../../components/StatusBadge.jsx'
 import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { usePolling } from '../../hooks/usePolling.js'
+import { useTenants } from '../../hooks/useTenants.js'
 import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
-
-const SHOPS = [
-  { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
-  { id: 'TENANT-002', name: 'Express Prints Bangalore', code: 'SHOP-BLR-001' },
-  { id: 'TENANT-003', name: 'PrintHub Delhi', code: 'SHOP-DEL-001' },
-]
 
 export default function ShopDashboardPage() {
   const navigate = useNavigate()
   const apiBaseUrl = useApiBaseUrl()
   const [shopTenant] = useLocalStorage('shopTenant', '')
+  const { getTenant } = useTenants()
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [printingJobId, setPrintingJobId] = useState(null)
@@ -104,7 +100,7 @@ export default function ShopDashboardPage() {
     )
   }
 
-  const shop = SHOPS.find((s) => s.id === shopTenant)
+  const shop = getTenant(shopTenant)
   const pendingCount = jobs.filter((j) => j.status === 'READY' || j.status === 'CREATED').length
 
   return (

@@ -6,16 +6,13 @@ import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { usePolling } from '../../hooks/usePolling.js'
 import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
-
-const SHOPS = [
-  { id: 'TENANT-001', name: 'QuickPrint Mumbai', code: 'SHOP-MUM-001' },
-  { id: 'TENANT-002', name: 'Express Prints Bangalore', code: 'SHOP-BLR-001' },
-  { id: 'TENANT-003', name: 'PrintHub Delhi', code: 'SHOP-DEL-001' },
-]
+import { useTenants } from '../../hooks/useTenants.js'
 
 export default function JobsPage() {
   const apiBaseUrl = useApiBaseUrl()
+  const { tenants, error: shopsError, getTenant } = useTenants()
   const [selectedShop, setSelectedShop] = useLocalStorage('selectedShop', '')
+  const selectedTenant = getTenant(selectedShop)
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -71,13 +68,16 @@ export default function JobsPage() {
           }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800">
             <option value="">All shops (local only)</option>
-            {SHOPS.map((s) => (
+            {tenants.map((s) => (
               <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
             ))}
           </select>
+          {shopsError && (
+            <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">Could not load print shops: {shopsError}</p>
+          )}
           {selectedShop && (
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Showing jobs for <span className="font-medium">{SHOPS.find((s) => s.id === selectedShop)?.name}</span>
+              Showing jobs for <span className="font-medium">{selectedTenant?.name || selectedShop}</span>
             </p>
           )}
         </div>
