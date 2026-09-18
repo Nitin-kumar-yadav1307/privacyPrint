@@ -1,0 +1,39 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "PrivacyPrint retention scheduler",
+  "Parameters": {
+    "LambdaArn": {
+      "Type": "String",
+      "Description": "ARN of the expiry Lambda function"
+    }
+  },
+  "Resources": {
+    "RetentionScheduleRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "privacyprint-retention-check",
+        "Description": "Runs the expiry worker on a fixed cadence",
+        "ScheduleExpression": "rate(5 minutes)",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Id": "privacyprint-expire-jobs-target",
+            "Arn": { "Ref": "LambdaArn" }
+          }
+        ]
+      }
+    },
+    "RetentionSchedulePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Ref": "LambdaArn" },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": { "Fn::GetAtt": ["RetentionScheduleRule", "Arn"] }
+      }
+    }
+  },
+  "Outputs": {
+    "ScheduleRuleName": { "Value": { "Ref": "RetentionScheduleRule" } }
+  }
+}

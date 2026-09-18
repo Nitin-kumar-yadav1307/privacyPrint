@@ -1,0 +1,66 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "PrivacyPrint job and tenant storage in DynamoDB",
+  "Resources": {
+    "JobsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "privacyprint-jobs",
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": true,
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "AttributeDefinitions": [
+          { "AttributeName": "jobId", "AttributeType": "S" },
+          { "AttributeName": "tenantId", "AttributeType": "S" },
+          { "AttributeName": "status", "AttributeType": "S" }
+        ],
+        "KeySchema": [
+          { "AttributeName": "jobId", "KeyType": "HASH" }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "tenant-status-index",
+            "KeySchema": [
+              { "AttributeName": "tenantId", "KeyType": "HASH" },
+              { "AttributeName": "status", "KeyType": "RANGE" }
+            ],
+            "Projection": { "ProjectionType": "ALL" }
+          }
+        ],
+        "TimeToLiveSpecification": {
+          "AttributeName": "expiresAtEpoch",
+          "Enabled": true
+        },
+        "Tags": [
+          { "Key": "Project", "Value": "PrivacyPrint" }
+        ]
+      }
+    },
+    "TenantsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "privacyprint-tenants",
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": true,
+        "AttributeDefinitions": [
+          { "AttributeName": "tenantId", "AttributeType": "S" }
+        ],
+        "KeySchema": [
+          { "AttributeName": "tenantId", "KeyType": "HASH" }
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "Tags": [
+          { "Key": "Project", "Value": "PrivacyPrint" }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "JobsTableName": { "Value": { "Ref": "JobsTable" } },
+    "TenantsTableName": { "Value": { "Ref": "TenantsTable" } }
+  }
+}
