@@ -5,20 +5,31 @@ import { Button } from '../../components/Button.jsx'
 import { Card, CardBody } from '../../components/Card.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { useTenants } from '../../hooks/useTenants.js'
+import { useApiBaseUrl, shopLogin } from '../../services/api.js'
 
 export default function ShopLoginPage() {
   const navigate = useNavigate()
   const [selectedShop, setSelectedShop] = useLocalStorage('shopTenant', '')
+  const apiBaseUrl = useApiBaseUrl()
   const [loggingIn, setLoggingIn] = useState(false)
+  const [passcode, setPasscode] = useState('')
+  const [loginError, setLoginError] = useState('')
   const { tenants, loading: shopsLoading, error: shopsError } = useTenants()
 
   const handleLogin = async () => {
-    if (!selectedShop) return
+    if (!selectedShop || !passcode) return
     setLoggingIn(true)
-    // Simulate a brief "authentication" delay
-    await new Promise((r) => setTimeout(r, 600))
-    setLoggingIn(false)
-    navigate('/shop/dashboard')
+    setLoginError('')
+    try {
+      // Exchanges the shop selection + demo passcode for a signed,
+      // expiring session token (stored by the api service).
+      await shopLogin(apiBaseUrl, selectedShop, passcode)
+      navigate('/shop/dashboard')
+    } catch (e) {
+      setLoginError(e.message)
+    } finally {
+      setLoggingIn(false)
+    }
   }
 
   return (
@@ -83,10 +94,29 @@ export default function ShopLoginPage() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Shop passcode
+              </label>
+              <input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                placeholder="Demo passcode: privacyprint-demo"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {loginError && (
+                <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                  {loginError}
+                </p>
+              )}
+            </div>
+
             <Button
               onClick={handleLogin}
               loading={loggingIn}
-              disabled={!selectedShop}
+              disabled={!selectedShop || !passcode}
               fullWidth
               size="lg"
             >

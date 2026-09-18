@@ -79,3 +79,65 @@ export async function uploadFile(baseUrl, url, file, fields = {}) {
   return res.json()
 }
 
+// ---------------------------------------------------------------------------
+// Shop session (Phase 11)
+//
+// The shop signs in with its tenantId and the demo passcode and receives a
+// signed, expiring session token. Shop pages attach it as a Bearer token on
+// every call; the API then derives the tenant server-side instead of trusting
+// a client-supplied tenantId.
+// ---------------------------------------------------------------------------
+
+const SHOP_TOKEN_KEY = 'shopToken'
+
+export function getShopToken() {
+  try {
+    return localStorage.getItem(SHOP_TOKEN_KEY) || ''
+  } catch {
+    // Storage unavailable (e.g. private mode) — the session just won't persist.
+    return ''
+  }
+}
+
+function setShopToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(SHOP_TOKEN_KEY, token)
+    } else {
+      localStorage.removeItem(SHOP_TOKEN_KEY)
+    }
+  } catch {
+    /* ignore — same as getShopToken */
+  }
+}
+
+/** Authorization headers for shop-authenticated API calls. */
+export function shopAuthHeaders() {
+  const token = getShopToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+/**
+ * POST /api/auth/shop/login — exchange the tenant selection and demo passcode
+ * for a signed session token, which is stored for subsequent shop calls.
+ * @param {string} baseUrl - The API base URL
+ * @param {string} tenantId - The shop the operator is signing in to
+ * @param {string} passcode - Demo credential
+ * @returns {Promise<Object>} { success, token, role, expiresAt, tenant }
+ */
+export async function shopLogin(baseUrl, tenantId, passcode) {
+  const data = await postJSON(baseUrl, '/api/auth/shop/login', { tenantId, passcode })
+  if (data.token) setShopToken(data.token)
+  return data
+}
+
+/** GET /api/auth/shop/session — verify the stored session on the server. */
+export async function shopSession(baseUrl) {
+  return fetchJSON(baseUrl, '/api/auth/shop/session', { headers: shopAuthHeaders() })
+}
+
+/** Clear the stored shop session (logout). */
+export function shopLogout() {
+  setShopToken('')
+}
+

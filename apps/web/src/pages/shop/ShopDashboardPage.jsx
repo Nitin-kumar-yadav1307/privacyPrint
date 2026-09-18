@@ -7,7 +7,7 @@ import { Button } from '../../components/Button.jsx'
 import { useLocalStorage } from '../../hooks/useLocalStorage.js'
 import { usePolling } from '../../hooks/usePolling.js'
 import { useTenants } from '../../hooks/useTenants.js'
-import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
+import { useApiBaseUrl, fetchJSON, shopAuthHeaders, shopLogout } from '../../services/api.js'
 
 export default function ShopDashboardPage() {
   const navigate = useNavigate()
@@ -27,8 +27,8 @@ export default function ShopDashboardPage() {
     try {
       const tenant = encodeURIComponent(shopTenant)
       const [data, queueData] = await Promise.all([
-        fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${tenant}`, { signal }),
-        fetchJSON(apiBaseUrl, `/api/jobs/queue?tenantId=${tenant}`, { signal }),
+        fetchJSON(apiBaseUrl, `/api/jobs?tenantId=${tenant}`, { signal, headers: shopAuthHeaders() }),
+        fetchJSON(apiBaseUrl, `/api/jobs/queue?tenantId=${tenant}`, { signal, headers: shopAuthHeaders() }),
       ])
       if (!signal.aborted) {
         setJobs(data.jobs || [])
@@ -36,11 +36,19 @@ export default function ShopDashboardPage() {
         setError('')
       }
     } catch (e) {
-      if (!signal.aborted) setError(e.message)
+      if (!signal.aborted) {
+        if (/session/i.test(e.message)) {
+          // Expired or invalid shop session — drop the token and re-login.
+          shopLogout()
+          navigate('/shop')
+          return
+        }
+        setError(e.message)
+      }
     } finally {
       if (!signal.aborted) setLoading(false)
     }
-  }, [shopTenant, apiBaseUrl])
+  }, [shopTenant, apiBaseUrl, navigate])
 
   useEffect(() => {
     if (!shopTenant) navigate('/shop')
@@ -58,7 +66,7 @@ export default function ShopDashboardPage() {
 
     // Notify backend to start printing
     try {
-      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/print?tenantId=${shopTenant}`, { method: 'POST' })
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/print?tenantId=${shopTenant}`, { method: 'POST', headers: shopAuthHeaders() })
       setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? data.job : j))
       setQueue((prev) => prev.map((j) => j.jobId === job.jobId ? data.job : j))
       addLog(data.message || 'Status: PRINTING')
@@ -78,7 +86,7 @@ export default function ShopDashboardPage() {
 
     // Notify backend that printing is complete
     try {
-      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/autocomplete?tenantId=${shopTenant}`, { method: 'POST' })
+      const data = await fetchJSON(apiBaseUrl, `/api/jobs/${job.jobId}/autocomplete?tenantId=${shopTenant}`, { method: 'POST', headers: shopAuthHeaders() })
       setQueue((prev) => prev.filter((j) => j.jobId !== job.jobId))
       setJobs((prev) => prev.map((j) => j.jobId === job.jobId ? { ...j, status: data.job.status, printedAt: data.job.printedAt, expiresAt: data.job.expiresAt } : j))
       addLog(`[${new Date().toLocaleTimeString()}] PRINT COMPLETED — Job ${job.jobId} retained for ${job.printSettings?.retentionMinutes ?? 30} min (demo: ~${(job.printSettings?.retentionMinutes * 10 || 300)}s)`)
@@ -114,7 +122,7 @@ export default function ShopDashboardPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 dark:text-gray-500">{pendingCount} pending</span>
-              <Button variant="secondary" onClick={() => navigate('/shop')}>Switch shop</Button>
+              <Button variant="secondary" onClick={() => { shopLogout(); navigate('/shop') }}>Switch shop</Button>
             </div>
           </div>
         </div>

@@ -9,6 +9,18 @@ const { TENANT_STATUS } = require('../models/Tenant')
 const uploadDocument = createDocumentUploader()
 
 /**
+ * Tenant this request may act on.
+ *
+ * A verified shop session (shopAuth middleware) is authoritative: its tenantId
+ * is bound server-side and a conflicting query parameter was already rejected
+ * with 403. The query parameter remains the local-demo fallback when no
+ * session was presented (AUTH_REQUIRED=false).
+ */
+function requestTenantId(req) {
+  return req.authorizedTenantId || (req.query && req.query.tenantId)
+}
+
+/**
  * GET /health
  * Simple health check endpoint.
  */
@@ -42,7 +54,10 @@ async function createJob(req, res, next) {
   const httpError = (name, message, statusCode) => Object.assign(new Error(message), { name, statusCode })
   const validationError = (message) => httpError('Validation error', message, 400)
   try {
-    const { tenantId, printSettings } = req.body
+    // A shop session, when presented, is authoritative for the tenant; the
+    // form body value is only trusted in the local demo (no session).
+    const tenantId = req.authorizedTenantId || req.body.tenantId
+    const printSettings = req.body.printSettings
 
     if (typeof tenantId !== 'string' || !tenantId.trim()) {
       throw validationError('tenantId is required')
@@ -148,7 +163,7 @@ function validatePrintSettings(settings) {
  */
 function listJobs(req, res, next) {
   try {
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -176,7 +191,7 @@ function listJobs(req, res, next) {
 function getJob(req, res, next) {
   try {
     const { jobId } = req.params
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -211,7 +226,7 @@ function getJob(req, res, next) {
 function startPrint(req, res, next) {
   try {
     const { jobId } = req.params
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -247,7 +262,7 @@ function startPrint(req, res, next) {
 function completePrint(req, res, next) {
   try {
     const { jobId } = req.params
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -282,7 +297,7 @@ function completePrint(req, res, next) {
 function getStatus(req, res, next) {
   try {
     const { jobId } = req.params
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -316,7 +331,7 @@ function getStatus(req, res, next) {
  */
 function getQueue(req, res, next) {
   try {
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -344,7 +359,7 @@ function getQueue(req, res, next) {
 function autoComplete(req, res, next) {
   try {
     const { jobId } = req.params
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
@@ -380,7 +395,7 @@ function autoComplete(req, res, next) {
 function cancelJob(req, res, next) {
   try {
     const { jobId } = req.params
-    const { tenantId } = req.query
+    const tenantId = requestTenantId(req)
 
     if (!tenantId) {
       return res.status(400).json({
