@@ -8,6 +8,7 @@ import { usePolling } from '../../hooks/usePolling.js'
 import { useApiBaseUrl, fetchJSON } from '../../services/api.js'
 import { useTenants } from '../../hooks/useTenants.js'
 import { formatCountdown } from '../../utils/time.js'
+import { PrivacyReceipt } from '../../components/PrivacyReceipt.jsx'
 
 export default function JobsPage() {
   const apiBaseUrl = useApiBaseUrl()
@@ -19,6 +20,7 @@ export default function JobsPage() {
 
   const [error, setError] = useState('')
   const [cancellingId, setCancellingId] = useState(null)
+  const [receiptJobId, setReceiptJobId] = useState(null)
 
   const cancelJob = async (job) => {
     if (cancellingId) return
@@ -104,7 +106,8 @@ export default function JobsPage() {
           <div className="space-y-3">
             {jobs.map((job) => (
               <Card key={job.jobId} className="hover:shadow-md transition-shadow">
-                <CardBody className="flex items-start justify-between gap-4">
+                <CardBody>
+                  <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-sm text-indigo-600 dark:text-indigo-400 font-medium">{job.jobId}</span>
@@ -128,7 +131,14 @@ export default function JobsPage() {
                         </Button>
                       </div>
                     )}
+                    <div className="mt-2">
+                      <Button variant="ghost" size="sm" onClick={() => setReceiptJobId(receiptJobId === job.jobId ? null : job.jobId)}>
+                        {receiptJobId === job.jobId ? 'Hide receipt' : 'Privacy receipt'}
+                      </Button>
+                    </div>
                   </div>
+                  </div>
+                  {receiptJobId === job.jobId && <PrivacyReceipt job={job} />}
                 </CardBody>
               </Card>
             ))}
