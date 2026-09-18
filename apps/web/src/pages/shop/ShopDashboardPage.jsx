@@ -193,17 +193,17 @@ export default function ShopDashboardPage() {
     <Layout title={`Shop Dashboard — ${shop?.name}`}>
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Shop Operator Top Bar */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#0c0c0e] border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-extrabold text-zinc-950 dark:text-white">
                 {shop?.name || 'Print Shop'}
               </h2>
-              <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold">
+              <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold border border-zinc-200 dark:border-zinc-700">
                 {shop?.code}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
               Tenant ID: <code className="font-mono text-[11px]">{shopTenant}</code>
             </p>
           </div>
@@ -237,33 +237,33 @@ export default function ShopDashboardPage() {
 
         {/* Quick KPI Stat Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#0c0c0e] border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center font-bold border border-zinc-200/60 dark:border-zinc-700/60">
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Pending Jobs</span>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white">{pendingJobs.length}</p>
+              <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Pending Jobs</span>
+              <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{pendingJobs.length}</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#0c0c0e] border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center font-bold border border-zinc-200/60 dark:border-zinc-700/60">
               <ListOrdered className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Active Queue</span>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white">{queue.length}</p>
+              <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Active Queue</span>
+              <p className="text-xl font-extrabold text-zinc-950 dark:text-white">{queue.length}</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#0c0c0e] border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center font-bold border border-zinc-200/60 dark:border-zinc-700/60">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Processed</span>
-              <p className="text-xl font-extrabold text-slate-900 dark:text-white">
+              <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Total Processed</span>
+              <p className="text-xl font-extrabold text-zinc-950 dark:text-white">
                 {jobs.filter((j) => j.status === 'PRINTED' || j.status === 'EXPIRED').length}
               </p>
             </div>
@@ -271,28 +271,28 @@ export default function ShopDashboardPage() {
         </div>
 
         {/* Printer Simulator Console */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 overflow-hidden shadow-md">
-          <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+        <div className="rounded-2xl border border-zinc-800 bg-black text-zinc-100 overflow-hidden shadow-md">
+          <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/80">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 mr-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-600 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" />
               </div>
-              <Terminal className="w-4 h-4 text-emerald-400" />
-              <span className="font-mono text-xs font-bold text-slate-300">
+              <Terminal className="w-4 h-4 text-zinc-300" />
+              <span className="font-mono text-xs font-bold text-zinc-200">
                 Hardware Spooler Daemon · Virtual Driver
               </span>
             </div>
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
+              <Radio className="w-3.5 h-3.5 text-zinc-200 animate-pulse" />
               <span>LIVE</span>
             </div>
           </div>
 
-          <div className="p-4 font-mono text-xs text-emerald-400 h-36 overflow-y-auto space-y-1 bg-black/40">
+          <div className="p-4 font-mono text-xs text-zinc-300 h-36 overflow-y-auto space-y-1 bg-black/60">
             {printerLogs.length === 0 ? (
-              <p className="text-slate-600 italic">Waiting for print requests...</p>
+              <p className="text-zinc-600 italic">Waiting for print requests...</p>
             ) : (
               printerLogs.map((log, idx) => (
                 <div key={idx} className="leading-relaxed">
@@ -303,8 +303,8 @@ export default function ShopDashboardPage() {
           </div>
 
           {printingJobId && (
-            <div className="px-4 py-2.5 bg-amber-500/10 border-t border-amber-500/20 text-amber-300 text-xs font-mono flex items-center gap-2">
-              <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            <div className="px-4 py-2.5 bg-zinc-900 border-t border-zinc-800 text-zinc-200 text-xs font-mono flex items-center gap-2">
+              <div className="w-3.5 h-3.5 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin" />
               <span>Actively printing Job {printingJobId}... Please do not disconnect.</span>
             </div>
           )}
@@ -321,11 +321,11 @@ export default function ShopDashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <ListOrdered className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  <ListOrdered className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
                   Hardware Dispatch Queue ({queue.length})
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                   FIFO sequencing · Automatic daemon dispatch
                 </p>
               </div>
@@ -333,9 +333,9 @@ export default function ShopDashboardPage() {
           </CardHeader>
           <CardBody>
             {loading ? (
-              <p className="text-xs text-slate-400 animate-pulse">Loading queue...</p>
+              <p className="text-xs text-zinc-400 animate-pulse">Loading queue...</p>
             ) : queue.length === 0 ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400 py-2">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
                 No jobs currently waiting in the hardware spooler.
               </p>
             ) : (
@@ -343,17 +343,17 @@ export default function ShopDashboardPage() {
                 {queue.map((qJob, index) => (
                   <div
                     key={qJob.jobId}
-                    className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"
+                    className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold text-xs flex items-center justify-center">
                         {index + 1}
                       </span>
                       <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-xs sm:max-w-md">
+                        <p className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-xs sm:max-w-md">
                           {qJob.document?.originalName || qJob.jobId}
                         </p>
-                        <span className="font-mono text-[11px] text-slate-400">{qJob.jobId}</span>
+                        <span className="font-mono text-[11px] text-zinc-400">{qJob.jobId}</span>
                       </div>
                     </div>
                     <StatusBadge status={qJob.status} />
@@ -367,23 +367,23 @@ export default function ShopDashboardPage() {
         {/* All Shop Jobs List */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Printer className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <Printer className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
               Incoming Job Management ({jobs.length})
             </h3>
           </div>
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-600 border-t-transparent" />
-              <p className="mt-2 text-xs font-semibold text-slate-500">Loading incoming jobs...</p>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-zinc-950 dark:border-zinc-100 border-t-transparent" />
+              <p className="mt-2 text-xs font-semibold text-zinc-500">Loading incoming jobs...</p>
             </div>
           ) : jobs.length === 0 ? (
             <Card>
               <CardBody className="text-center py-12">
-                <FileText className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-                <h4 className="font-bold text-slate-800 dark:text-slate-200">No print jobs received</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <FileText className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
+                <h4 className="font-bold text-zinc-800 dark:text-zinc-200">No print jobs received</h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                   When customers submit print jobs to {shop?.name}, they will appear here.
                 </p>
               </CardBody>
@@ -395,21 +395,21 @@ export default function ShopDashboardPage() {
                 return (
                   <div
                     key={job.jobId}
-                    className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs hover:shadow-md transition-shadow"
+                    className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e] p-5 shadow-xs hover:shadow-md transition-shadow"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       {/* Left Details */}
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md">
+                          <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md">
                             {job.jobId}
                           </span>
                           <StatusBadge status={job.status} />
                         </div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-xs sm:max-w-md">
+                        <h4 className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-xs sm:max-w-md">
                           {job.document?.originalName || 'Untitled Document'}
                         </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
                           Received {job.createdAt ? new Date(job.createdAt).toLocaleTimeString() : '—'}
                         </p>
                       </div>
@@ -427,7 +427,7 @@ export default function ShopDashboardPage() {
                             {printingJobId === job.jobId ? 'Printing...' : 'PRINT JOB'}
                           </Button>
                         ) : (
-                          <div className="text-right text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+                          <div className="text-right text-xs text-zinc-500 dark:text-zinc-400 space-y-0.5">
                             {job.printedAt && (
                               <p className="flex items-center gap-1 font-mono">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 inline" />
@@ -435,7 +435,7 @@ export default function ShopDashboardPage() {
                               </p>
                             )}
                             {job.expiresAt && (
-                              <p className="flex items-center gap-1 font-mono text-indigo-600 dark:text-indigo-400 font-medium">
+                              <p className="flex items-center gap-1 font-mono text-zinc-600 dark:text-zinc-400 font-medium">
                                 <Clock className="w-3.5 h-3.5 inline" />
                                 Wipe in {formatCountdown(job.expiresAt, now)}
                               </p>
@@ -446,28 +446,28 @@ export default function ShopDashboardPage() {
                     </div>
 
                     {/* Print Specs Grid */}
-                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-                        <span className="text-[10px] text-slate-400 uppercase">Copies / Format</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/40">
+                        <span className="text-[10px] text-zinc-400 uppercase">Copies / Format</span>
+                        <p className="font-semibold text-zinc-800 dark:text-zinc-200">
                           {job.printSettings?.copies}× {job.printSettings?.paperSize} ({job.printSettings?.orientation})
                         </p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-                        <span className="text-[10px] text-slate-400 uppercase">Pages</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/40">
+                        <span className="text-[10px] text-zinc-400 uppercase">Pages</span>
+                        <p className="font-semibold text-zinc-800 dark:text-zinc-200">
                           {job.printSettings?.pages || 'all'}
                         </p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-                        <span className="text-[10px] text-slate-400 uppercase">Color & Duplex</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/40">
+                        <span className="text-[10px] text-zinc-400 uppercase">Color & Duplex</span>
+                        <p className="font-semibold text-zinc-800 dark:text-zinc-200">
                           {job.printSettings?.color === 'color' ? 'Full Color' : 'B&W'} · {job.printSettings?.duplex ? 'Duplex' : '1-Sided'}
                         </p>
                       </div>
-                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40">
-                        <span className="text-[10px] text-slate-400 uppercase">Retention Window</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/40">
+                        <span className="text-[10px] text-zinc-400 uppercase">Retention Window</span>
+                        <p className="font-semibold text-zinc-800 dark:text-zinc-200">
                           {job.printSettings?.retentionMinutes || 30} min
                         </p>
                       </div>

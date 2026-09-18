@@ -89,10 +89,10 @@ export default function JobsPage() {
         {/* Header Title & Filter Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-2xl font-extrabold text-zinc-950 dark:text-white tracking-tight">
               Active Print Jobs
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Live tracking and zero-knowledge privacy lifecycle receipts.
             </p>
           </div>
@@ -107,9 +107,9 @@ export default function JobsPage() {
         </div>
 
         {/* Filter Card */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300">
-            <Store className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#0c0c0e] border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 text-xs text-zinc-700 dark:text-zinc-300">
+            <Store className="w-4 h-4 text-zinc-900 dark:text-zinc-100 shrink-0" />
             <span className="font-semibold">Filter by Print Shop:</span>
           </div>
 
@@ -147,13 +147,13 @@ export default function JobsPage() {
         {jobs.length === 0 && !loading ? (
           <Card>
             <CardBody className="text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-700">
                 <FileText className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">
                 {selectedShop ? 'No print jobs found' : 'Select a print shop to view jobs'}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-6">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto mb-6">
                 {selectedShop
                   ? 'There are currently no active or pending jobs for this print shop.'
                   : 'Choose a print shop from the dropdown above or submit a new print job to begin.'}
@@ -173,30 +173,30 @@ export default function JobsPage() {
               return (
                 <div
                   key={job.jobId}
-                  className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs hover:shadow-md transition-all duration-200"
+                  className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e] p-5 shadow-xs hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     {/* Left: Job Meta & Document */}
                     <div className="flex items-start gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center shrink-0 mt-0.5 border border-zinc-200/60 dark:border-zinc-700/60">
                         <FileText className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md">
+                          <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md">
                             {job.jobId}
                           </span>
                           <StatusBadge status={job.status} />
                         </div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-xs sm:max-w-md">
+                        <h4 className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-xs sm:max-w-md">
                           {job.document?.originalName || 'Untitled Document'}
                         </h4>
-                        <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                           <span>{job.printSettings?.copies || 1} copies</span>
                           <span>·</span>
                           <span>{job.printSettings?.paperSize || 'A4'}</span>
                           <span>·</span>
-                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                          <span className="font-medium text-zinc-700 dark:text-zinc-300">
                             {job.printSettings?.color === 'color' ? 'Color' : 'B&W'}
                           </span>
                           <span>·</span>
@@ -206,10 +206,10 @@ export default function JobsPage() {
                     </div>
 
                     {/* Right: Time & Actions */}
-                    <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                    <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800">
                       {job.expiresAt && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-700 dark:text-slate-300">
-                          <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 text-[11px] font-mono text-zinc-700 dark:text-zinc-300">
+                          <Clock className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
                           <span>Wipe in {formatCountdown(job.expiresAt, now)}</span>
                         </div>
                       )}
@@ -253,8 +253,8 @@ export default function JobsPage() {
 
         {jobs.length === 0 && loading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-600 border-t-transparent" />
-            <p className="mt-2 text-xs font-semibold text-slate-500">Checking for print jobs...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-zinc-950 dark:border-zinc-100 border-t-transparent" />
+            <p className="mt-2 text-xs font-semibold text-zinc-500">Checking for print jobs...</p>
           </div>
         )}
       </div>

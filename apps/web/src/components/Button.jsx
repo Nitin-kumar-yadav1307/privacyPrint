@@ -17,17 +17,17 @@ export function Button({
 
   const variants = {
     primary:
-      'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 shadow-sm hover:shadow-md hover:shadow-indigo-500/20 focus-visible:ring-indigo-500 border border-indigo-500/30',
+      'bg-zinc-950 text-white hover:bg-zinc-800 active:bg-black dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-white dark:active:bg-zinc-200 border border-zinc-900 dark:border-zinc-200 shadow-xs focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-100',
     secondary:
-      'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 focus-visible:ring-slate-400',
+      'bg-white dark:bg-zinc-900/90 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100/80 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-2xs focus-visible:ring-zinc-400',
     danger:
-      'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 shadow-sm hover:shadow-rose-500/20 focus-visible:ring-rose-500',
+      'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-xs focus-visible:ring-red-500',
     success:
-      'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-sm hover:shadow-emerald-500/20 focus-visible:ring-emerald-500',
+      'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-xs focus-visible:ring-emerald-500',
     ghost:
-      'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 focus-visible:ring-slate-400',
+      'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800/80 focus-visible:ring-zinc-400',
     outline:
-      'border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 focus-visible:ring-indigo-500',
+      'border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 focus-visible:ring-zinc-500',
   }
 
   const sizes = {
