@@ -8,6 +8,7 @@ const fs = require('fs')
 const routes = require('./routes/jobs')
 const tenantRoutes = require('./routes/tenants')
 const authRoutes = require('./routes/auth')
+const connectorRoutes = require('./routes/connector')
 const { errorHandler } = require('./middleware/errorHandler')
 const { PORT, UPLOAD_DIR } = require('./config')
 
@@ -29,6 +30,7 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 app.use('/api', routes)
 app.use('/api', tenantRoutes)
 app.use('/api', authRoutes)
+app.use('/api', connectorRoutes)
 
 // Error handler (must be last)
 app.use(errorHandler)

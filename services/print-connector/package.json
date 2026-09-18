@@ -1,0 +1,15 @@
+{
+  "name": "privacyprint-print-connector",
+  "version": "1.0.0",
+  "description": "Shop-side print connector: polls PrivacyPrint for PRINTING jobs and sends them to a real CUPS printer (PDF fallback without hardware).",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/connector.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

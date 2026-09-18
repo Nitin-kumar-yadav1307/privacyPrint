@@ -97,6 +97,19 @@ The next production steps, aligned with the plan, are:
 - Keep secrets in environment variables, never in source control
 - Log job lifecycle transitions for auditability
 
+## Print Connector
+
+A shop-side agent (`services/print-connector/`) bridges the print queue to a
+real operating-system printer. A browser can never drive a physical printer,
+so — like every real print service — PrivacyPrint ships a small connector that
+runs on the shop's own computer: it authenticates as exactly one shop tenant
+with a signed session token, polls for PRINTING jobs, downloads the temporary
+document, prints it via CUPS (`lp` with whitelisted, argument-array
+invocations), reports `PRINT_COMPLETED`/`PRINT_FAILED` back, and deletes its
+local copy. Without hardware, `PRINT_MODE=pdf` produces a verbatim PDF copy
+plus a settings manifest — always labeled as PDF fallback, never as physical
+printing. See `services/print-connector/README.md` for setup.
+
 ## Status
 
 This repository is structured as a working hackathon MVP with a local backend, demo shop auth, tenant-aware job APIs, printer simulation, and retention lifecycle handling. The AWS layer is intentionally planned and scaffolded, but not yet deployed as a production cloud integration.

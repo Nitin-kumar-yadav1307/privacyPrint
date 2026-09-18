@@ -29,6 +29,29 @@ export default function ShopDashboardPage() {
     return () => clearInterval(timer)
   }, [])
 
+  // Connector liveness (online/offline, print mode, printer state).
+  const [connector, setConnector] = useState(null)
+  useEffect(() => {
+    if (!shopTenant) return
+    let cancelled = false
+    const check = async () => {
+      try {
+        const data = await fetchJSON(apiBaseUrl, `/api/connector/status?tenantId=${encodeURIComponent(shopTenant)}`, {
+          headers: shopAuthHeaders(),
+        })
+        if (!cancelled) setConnector(data.connector || null)
+      } catch {
+        if (!cancelled) setConnector(null)
+      }
+    }
+    check()
+    const timer = setInterval(check, 10000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [shopTenant, apiBaseUrl])
+
   const fetchJobs = useCallback(async (signal) => {
     if (!shopTenant) return
     try {
@@ -128,6 +151,13 @@ export default function ShopDashboardPage() {
               <p className="text-sm text-gray-500 dark:text-gray-400">{shop?.code} · Tenant: {shopTenant}</p>
             </div>
             <div className="flex items-center gap-3">
+              <span
+                className={`text-xs font-medium ${connector?.online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                title={connector?.lastSeenAt ? `Last seen ${new Date(connector.lastSeenAt).toLocaleTimeString()}` : 'No connector heartbeat yet'}
+              >
+                ● Connector {connector?.online ? 'online' : 'offline'}
+                {connector?.online && connector.printerState ? ` · ${connector.printerState}` : ''}
+              </span>
               <span className="text-xs text-gray-400 dark:text-gray-500">{pendingCount} pending</span>
               <Button variant="secondary" onClick={() => { shopLogout(); navigate('/shop') }}>Switch shop</Button>
             </div>

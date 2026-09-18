@@ -27,3 +27,7 @@ apps/api/data/
 
 # OS files
 .DS_Store
+# Print connector local artifacts (never commit documents)
+services/print-connector/output/*
+!services/print-connector/output/.gitkeep
+services/print-connector/.tmp/
