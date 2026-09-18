@@ -67,6 +67,12 @@ flowchart TD
 
 ## AWS production direction
 
+The event-driven expiry worker (`services/expiry-worker/`) enforces the
+retention lifecycle independently of the API process: EventBridge invokes the
+`privacyprint-expiry-worker` Lambda, which deletes expired documents from S3
+before marking jobs EXPIRED in DynamoDB — with retry-on-failure semantics so
+an EXPIRED job can never leave a document behind.
+
 The repository already includes a private S3 CloudFormation template under [infrastructure/s3/template.json](infrastructure/s3/template.json), which establishes the storage layer correctly for a privacy-first design:
 
 - encrypted with SSE-S3

@@ -1,0 +1,18 @@
+{
+  "name": "privacyprint-expiry-worker",
+  "version": "1.0.0",
+  "description": "EventBridge-driven expiry worker: deletes expired temporary documents from S3 and transitions jobs to EXPIRED/CANCELLED in DynamoDB.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test tests/expiryWorker.test.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
