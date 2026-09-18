@@ -4,7 +4,7 @@
   "description": "Shop-side print connector: polls PrivacyPrint for PRINTING jobs and sends them to a real CUPS printer (PDF fallback without hardware).",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
     "test": "node --test tests/connector.test.js"
   },
   "engines": {

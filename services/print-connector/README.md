@@ -31,6 +31,21 @@ Customer → API → Shop clicks PRINT (job → PRINTING)
   only reports print results.
 - The temporary download is deleted after every attempt, success or failure.
 
+## Windows judges/shop owners
+
+- The **web app is fully OS-agnostic** — customer flow and shop dashboard work
+  in any browser; no connector needed for the demo (the dashboard simulator
+  completes jobs when no connector is online).
+- The connector itself runs on Windows with Node 18+:
+  - `PRINT_MODE=pdf` (or `auto`, which auto-detects no CUPS and falls back)
+    produces the PDF artifact + manifest in `output/`.
+  - Real physical printing needs CUPS, which Windows does not ship; auto mode
+    detects this and uses the PDF fallback instead of failing.
+- Configuration: copy `.env.example` to `.env` and fill in `SHOP_TOKEN` —
+  the connector loads `.env` automatically (`--env-file-if-exists`). Inline
+  environment variables also work in PowerShell:
+  `$env:SHOP_TOKEN="..."; npm start`.
+
 ## Setup (Linux / CUPS)
 
 1. Install CUPS: `sudo apt install cups` (or your distro equivalent).
