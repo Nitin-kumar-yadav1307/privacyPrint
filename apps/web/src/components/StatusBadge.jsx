@@ -1,42 +1,42 @@
 const STATUS_CONFIG = {
   CREATED: {
-    color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700',
-    dot: 'bg-slate-400',
+    color: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800',
+    dot: 'bg-zinc-400',
     pulse: false,
     label: 'Created',
   },
   READY: {
-    color: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800',
-    dot: 'bg-sky-500',
+    color: 'bg-zinc-950 text-white border-zinc-950 dark:bg-zinc-100 dark:text-zinc-950 dark:border-white shadow-2xs',
+    dot: 'bg-emerald-400 dark:bg-emerald-600',
     pulse: true,
     label: 'Ready for Print',
   },
   PRINTING: {
-    color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
-    dot: 'bg-amber-500',
+    color: 'bg-zinc-950 text-white border-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:border-zinc-200 shadow-2xs',
+    dot: 'bg-amber-400 dark:bg-amber-600',
     pulse: true,
     label: 'Printing...',
   },
   PRINTED: {
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
+    color: 'bg-zinc-100 text-zinc-900 border-zinc-300 dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700',
     dot: 'bg-emerald-500',
     pulse: false,
     label: 'Printed',
   },
   EXPIRED: {
-    color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800',
-    dot: 'bg-rose-400',
+    color: 'bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-900/60 dark:text-zinc-500 dark:border-zinc-800',
+    dot: 'bg-zinc-400',
     pulse: false,
     label: 'Auto-Deleted',
   },
   FAILED: {
-    color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800',
-    dot: 'bg-rose-500',
+    color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900',
+    dot: 'bg-red-500',
     pulse: false,
     label: 'Failed',
   },
   CANCELLED: {
-    color: 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700',
+    color: 'bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800',
     dot: 'bg-zinc-400',
     pulse: false,
     label: 'Cancelled',
@@ -45,8 +45,8 @@ const STATUS_CONFIG = {
 
 export function StatusBadge({ status, className = '' }) {
   const config = STATUS_CONFIG[status] || {
-    color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-    dot: 'bg-slate-400',
+    color: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800',
+    dot: 'bg-zinc-400',
     pulse: false,
     label: status,
   }

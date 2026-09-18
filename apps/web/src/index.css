@@ -16,15 +16,15 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #fafafa;
+  color: #09090b;
   font-family: var(--font-sans);
 }
 
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #090d16;
-    color: #f8fafc;
+    background-color: #000000;
+    color: #ededed;
   }
 }
 
@@ -35,20 +35,33 @@ body {
   width: 100%;
 }
 
-/* Custom smooth scrollbar */
+::selection {
+  background-color: #18181b;
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  ::selection {
+    background-color: #f4f4f5;
+    color: #09090b;
+  }
+}
+
+/* Custom sleek monochromatic scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(113, 113, 122, 0.3);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
+  background: rgba(113, 113, 122, 0.5);
 }
+
 
 

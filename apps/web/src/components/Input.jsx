@@ -18,15 +18,15 @@ export function Input({
       {label && (
         <label
           htmlFor={name}
-          className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5"
+          className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5"
         >
           {label}
-          {required && <span className="text-rose-500 ml-1">*</span>}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       <div className="relative flex items-center">
         {Icon && (
-          <div className="absolute left-3.5 text-slate-400 pointer-events-none">
+          <div className="absolute left-3.5 text-zinc-400 pointer-events-none">
             <Icon className="w-4 h-4" />
           </div>
         )}
@@ -40,15 +40,15 @@ export function Input({
           onChange={onChange}
           className={`w-full ${
             Icon ? 'pl-10' : 'px-3.5'
-          } py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-400 ${
+          } py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-zinc-950/5 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-100 ${
             error
-              ? 'border-rose-400 dark:border-rose-500/60 focus:ring-rose-500/10 focus:border-rose-500'
-              : 'hover:border-slate-300 dark:hover:border-slate-700'
+              ? 'border-red-500 dark:border-red-500/60 focus:ring-red-500/10 focus:border-red-500'
+              : 'hover:border-zinc-300 dark:hover:border-zinc-700'
           }`}
           {...props}
         />
       </div>
-      {error && <p className="mt-1.5 text-xs text-rose-500 font-medium">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-500 font-medium">{error}</p>}
     </div>
   )
 }
@@ -69,10 +69,10 @@ export function Select({
       {label && (
         <label
           htmlFor={name}
-          className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5"
+          className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5"
         >
           {label}
-          {required && <span className="text-rose-500 ml-1">*</span>}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       <div className="relative">
@@ -82,10 +82,10 @@ export function Select({
           value={value}
           required={required}
           onChange={onChange}
-          className={`w-full appearance-none px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 pr-10 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-400 cursor-pointer ${
+          className={`w-full appearance-none px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 pr-10 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-zinc-950/5 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-100 cursor-pointer ${
             error
-              ? 'border-rose-400 dark:border-rose-500/60 focus:ring-rose-500/10 focus:border-rose-500'
-              : 'hover:border-slate-300 dark:hover:border-slate-700'
+              ? 'border-red-500 dark:border-red-500/60 focus:ring-red-500/10 focus:border-red-500'
+              : 'hover:border-zinc-300 dark:hover:border-zinc-700'
           }`}
         >
           {placeholder && !options.some(o => o.value === '') && (
@@ -94,16 +94,16 @@ export function Select({
             </option>
           )}
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 py-1">
+            <option key={opt.value} value={opt.value} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 py-1">
               {opt.label}
             </option>
           ))}
         </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400">
           <ChevronDown className="w-4 h-4" />
         </div>
       </div>
-      {error && <p className="mt-1.5 text-xs text-rose-500 font-medium">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-500 font-medium">{error}</p>}
     </div>
   )
 }
@@ -124,10 +124,10 @@ export function Textarea({
       {label && (
         <label
           htmlFor={name}
-          className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5"
+          className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5"
         >
           {label}
-          {required && <span className="text-rose-500 ml-1">*</span>}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       <textarea
@@ -138,14 +138,15 @@ export function Textarea({
         required={required}
         onChange={onChange}
         rows={rows}
-        className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-400 resize-none ${
+        className={`w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-zinc-950/5 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-100 resize-none ${
           error
-            ? 'border-rose-400 dark:border-rose-500/60 focus:ring-rose-500/10 focus:border-rose-500'
-            : 'hover:border-slate-300 dark:hover:border-slate-700'
+            ? 'border-red-500 dark:border-red-500/60 focus:ring-red-500/10 focus:border-red-500'
+            : 'hover:border-zinc-300 dark:hover:border-zinc-700'
         }`}
       />
-      {error && <p className="mt-1.5 text-xs text-rose-500 font-medium">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-500 font-medium">{error}</p>}
     </div>
   )
 }
+
 
