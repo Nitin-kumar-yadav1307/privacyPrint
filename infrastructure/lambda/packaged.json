@@ -57,7 +57,7 @@ Resources:
         - Arn
       Code:
         S3Bucket: privacyprint-deploy-430758392632-ap-south-1
-        S3Key: expiry-worker/3c39f49c55c69079d836786d2bcb837d
+        S3Key: expiry-worker/a5d68b3bc7779ed1b13fe7c7e288be09
       Environment:
         Variables:
           JOBS_TABLE:
