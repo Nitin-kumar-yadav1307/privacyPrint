@@ -25,7 +25,7 @@ test('lambda is named for the expiry workflow and reports its ARN', () => {
 })
 
 test('expiry code is packaged from the expiry-worker zip and receives stack outputs', () => {
-  assert.equal(fn.Properties.Code, '../expiry-worker/dist/lambda.zip')
+  assert.equal(fn.Properties.Code, '../../services/expiry-worker/dist/lambda.zip')
   const env = fn.Properties.Environment.Variables
   assert.deepEqual(env.JOBS_TABLE, { Ref: 'JobsTableName' })
   assert.deepEqual(env.DOCUMENT_BUCKET, { Ref: 'DocumentBucketName' })

@@ -75,7 +75,7 @@
         "MemorySize": 256,
         "Timeout": 60,
         "Role": { "Fn::GetAtt": ["ExpireJobsFunctionRole", "Arn"] },
-        "Code": "../expiry-worker/dist/lambda.zip",
+        "Code": "../../services/expiry-worker/dist/lambda.zip",
         "Environment": {
           "Variables": {
             "JOBS_TABLE": { "Ref": "JobsTableName" },

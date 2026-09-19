@@ -76,7 +76,7 @@
         "MemorySize": 512,
         "Timeout": 30,
         "Role": { "Fn::GetAtt": ["ApiFunctionRole", "Arn"] },
-        "Code": "../api/dist/lambda.zip",
+        "Code": "../../apps/api/dist/lambda.zip",
         "Environment": {
           "Variables": {
             "NODE_ENV": "production",
