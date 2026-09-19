@@ -4,19 +4,53 @@
  */
 const { API_BASE_URL, SHOP_TOKEN } = require('./config')
 
+let shopToken = SHOP_TOKEN
+
+function setShopToken(token) {
+  shopToken = token || ''
+}
+
+function getShopToken() {
+  return shopToken
+}
+
 async function apiFetch(pathname, options = {}) {
+  const headers = { ...(options.headers || {}) }
+  if (shopToken) {
+    headers.Authorization = `Bearer ${shopToken}`
+  }
   const res = await fetch(`${API_BASE_URL}${pathname}`, {
     ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${SHOP_TOKEN}`,
-    },
+    headers,
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.message || `API error HTTP ${res.status}`)
   }
   return res
+}
+
+async function pingHealth() {
+  const res = await fetch(`${API_BASE_URL}/api/health`)
+  if (!res.ok) {
+    throw new Error(`API health check failed with HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+async function loginShop({ tenantId, passcode }) {
+  const res = await fetch(`${API_BASE_URL}/api/auth/shop/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenantId, passcode }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.message || `API error HTTP ${res.status}`)
+  }
+  const data = await res.json()
+  if (data.token) setShopToken(data.token)
+  return data
 }
 
 /** PRINTING jobs belonging to this connector's shop. */
@@ -56,4 +90,14 @@ async function heartbeat(meta = {}) {
   })
 }
 
-module.exports = { apiFetch, listPrintingJobs, downloadDocument, reportPrintResult, heartbeat }
+module.exports = {
+  apiFetch,
+  pingHealth,
+  loginShop,
+  listPrintingJobs,
+  downloadDocument,
+  reportPrintResult,
+  heartbeat,
+  getShopToken,
+  setShopToken,
+}

@@ -7,6 +7,12 @@ const path = require('path')
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001'
 const SHOP_TOKEN = process.env.SHOP_TOKEN || ''
 
+// Alternative to SHOP_TOKEN: the connector signs in itself (SHOP_TENANT_ID +
+// SHOP_PASSCODE) and re-signs-in when the session expires, so an unattended
+// connector never silently goes offline mid-demo.
+const SHOP_TENANT_ID = process.env.SHOP_TENANT_ID || process.env.SHOP_ID || ''
+const SHOP_PASSCODE = process.env.SHOP_PASSCODE || ''
+
 const PRINT_MODE_INPUT = process.env.PRINT_MODE || 'auto'
 const PRINT_MODE = ['auto', 'cups', 'pdf', 'windows'].includes(PRINT_MODE_INPUT) ? PRINT_MODE_INPUT : 'auto'
 
@@ -22,4 +28,15 @@ const OUTPUT_DIR = path.resolve(__dirname, '..', 'output')
 // Short-lived downloads — deleted after every print attempt.
 const TMP_DIR = path.resolve(__dirname, '..', '.tmp')
 
-module.exports = { API_BASE_URL, SHOP_TOKEN, PRINT_MODE, POLL_INTERVAL_MS, PRINTER_NAME, WIN_PRINT_TOOL, OUTPUT_DIR, TMP_DIR }
+module.exports = {
+	API_BASE_URL,
+	SHOP_TOKEN,
+	SHOP_TENANT_ID,
+	SHOP_PASSCODE,
+	PRINT_MODE,
+	POLL_INTERVAL_MS,
+	PRINTER_NAME,
+	WIN_PRINT_TOOL,
+	OUTPUT_DIR,
+	TMP_DIR,
+}

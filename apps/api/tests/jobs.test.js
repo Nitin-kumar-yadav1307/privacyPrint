@@ -87,9 +87,10 @@ async function runTests() {
   assert.strictEqual(health.body.service, 'PrivacyPrint API')
   console.log('✓ Test 1: Health check passes')
 
-  // Create a test file for upload
-  const testFilePath = path.join(__dirname, 'test-upload.txt')
-  fs.writeFileSync(testFilePath, 'This is a test document for PrivacyPrint API testing.')
+  // Create a test file for upload. The API verifies content signatures, so the
+  // bytes must match the declared type (application/pdf in the multipart below).
+  const testFilePath = path.join(__dirname, 'test-upload.pdf')
+  fs.writeFileSync(testFilePath, '%PDF-1.7\n% PrivacyPrint API test document\n%%EOF\n')
 
   // Test 2: Create a job
   const created = await apiRequest('POST', '/api/jobs', null, testFilePath)

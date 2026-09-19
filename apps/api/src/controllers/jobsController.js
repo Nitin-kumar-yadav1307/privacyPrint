@@ -1,6 +1,7 @@
 const { JOB_STATUS } = require('../constants')
 const jobService = require('../services/jobService')
 const { removeDocument } = require('../services/documentStorage')
+const { assertUploadContent } = require('../utils/fileValidation')
 const { createDocumentUploader } = require('../services/documentUploader')
 const tenantService = require('../services/tenantService')
 const { TENANT_STATUS } = require('../models/Tenant')
@@ -88,6 +89,15 @@ async function createJob(req, res, next) {
     const errors = validatePrintSettings(settings)
     if (errors.length > 0) {
       throw validationError(errors.join('; '))
+    }
+
+    // The bytes decide the type, not the client's Content-Type header: a file
+    // renamed .pdf is rejected here instead of being stored and later failing
+    // inside the printer's filter chain. The catch block removes it.
+    try {
+      assertUploadContent(req.file.path, req.file.mimetype)
+    } catch (contentError) {
+      throw validationError(contentError.message)
     }
 
     const documentInfo = {

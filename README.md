@@ -119,6 +119,12 @@ cd services/print-connector
 SHOP_TOKEN=<token from shop login> PRINT_MODE=pdf POLL_INTERVAL_MS=1000 npm start
 ```
 
+Or, if you want API + web + connector together from the repo root:
+
+```bash
+SHOP_TENANT_ID=TENANT-002 SHOP_PASSCODE=privacyprint-demo npm run dev:all
+```
+
 Demo walkthrough:
 
 1. **Customer**: open the web app, pick a shop, upload any PDF, set copies /
@@ -127,9 +133,10 @@ Demo walkthrough:
    `privacyprint-demo`. The dashboard shows the job; a green
    **● Connector online** badge confirms the connector's heartbeat.
 3. **Print**: click **PRINT**. The connector downloads the document and
-   produces `services/print-connector/output/<jobId>-print.pdf` plus a
-   settings manifest. The job turns **PRINTED** and the retention countdown
-   starts (demo TTL is accelerated).
+   sends it to the real printer when CUPS is available, or produces
+   `services/print-connector/output/<jobId>-print.pdf` plus a settings
+   manifest in PDF fallback mode. The job turns **PRINTED** and the retention
+   countdown starts (demo TTL is accelerated).
 4. **Expiry**: when the countdown hits zero the job becomes **EXPIRED** and
    the temporary document is deleted. The customer can open the job's
    **Privacy receipt** to see the full lifecycle record.
@@ -143,12 +150,18 @@ A shop-side agent (`services/print-connector/`) bridges the print queue to a
 real operating-system printer. A browser can never drive a physical printer,
 so — like every real print service — PrivacyPrint ships a small connector that
 runs on the shop's own computer: it authenticates as exactly one shop tenant
-with a signed session token, polls for PRINTING jobs, downloads the temporary
-document, prints it via CUPS (`lp` with whitelisted, argument-array
-invocations), reports `PRINT_COMPLETED`/`PRINT_FAILED` back, and deletes its
-local copy. Without hardware, `PRINT_MODE=pdf` produces a verbatim PDF copy
-plus a settings manifest — always labeled as PDF fallback, never as physical
-printing. See `services/print-connector/README.md` for setup.
+with a signed session token, or can log in itself from a shop tenant id plus
+the demo passcode for local setup, polls for PRINTING jobs, downloads the
+temporary document, prints it via CUPS (`lp` with whitelisted,
+argument-array invocations), reports `PRINT_COMPLETED`/`PRINT_FAILED` back,
+and deletes its local copy. Printer setup is **zero-touch**: the connector asks
+the OS which printers exist (USB or wireless, per-queue device URIs on
+CUPS / `PortName` on Windows), prefers the shop's default printer, skips virtual
+queues, and publishes the printer it chose to the shop dashboard. If none is
+found it re-checks and then reports a clear failure instead of pretending.
+Without hardware, `PRINT_MODE=pdf` produces a
+verbatim PDF copy plus a settings manifest — always labeled as PDF fallback,
+never as physical printing. See `services/print-connector/README.md` for setup.
 
 ## Status
 

@@ -12,11 +12,26 @@ const connectorRoutes = require('./routes/connector')
 const { errorHandler } = require('./middleware/errorHandler')
 const { PORT, UPLOAD_DIR } = require('./config')
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true
+  const allowedOrigins = new Set([
+    process.env.CORS_ORIGIN || 'http://localhost:5173',
+    'http://localhost:5174',
+  ])
+  if (allowedOrigins.has(origin)) return true
+  if (process.env.NODE_ENV !== 'production') {
+    return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+  }
+  return false
+}
+
 const app = express()
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin(origin, callback) {
+    callback(null, isAllowedOrigin(origin))
+  },
 }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))

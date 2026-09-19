@@ -61,11 +61,24 @@ async function runTests() {
     console.log('✓ Invalid tenant/settings JSON/settings values leave no uploaded file or job')
     console.log('✓ Accepted document survives other rejected requests; missing file returns 400')
 
+    // Content spoofing: the declared type is not trusted, the bytes are.
+    // A text file named .pdf must never reach storage (or a printer).
+    const spoofed = new FormData()
+    spoofed.set('tenantId', 'TENANT-001')
+    spoofed.set('printSettings', JSON.stringify(settings))
+    spoofed.set('document', new Blob(['plain text pretending to be a PDF'], { type: 'application/pdf' }), 'invoice.pdf')
+    const spoofedResponse = await fetch(url, { method: 'POST', body: spoofed })
+    assert.equal(spoofedResponse.status, 400)
+    assert.match((await spoofedResponse.json()).message, /does not match its declared type/)
+    assert.deepEqual(fs.readdirSync(uploadDir), expectedFiles, 'Spoofed upload must be removed')
+    assert.equal(jobs.allJobs().length, 1, 'Spoofed upload must not create a job')
+    console.log('✓ Document whose content contradicts its declared type is rejected and removed')
+
     // Deterministic failure cases at the controller boundary.
     const temporaryPath = path.join(uploadDir, 'failure.txt')
     const req = {
       body: { tenantId: 'TENANT-001', printSettings: JSON.stringify(settings) },
-      file: { path: temporaryPath, filename: 'failure.txt', originalname: 'synthetic.txt' },
+      file: { path: temporaryPath, filename: 'failure.txt', originalname: 'synthetic.txt', mimetype: 'text/plain' },
     }
     const originalCreate = jobs.create
     const failure = new Error('Synthetic store failure')
