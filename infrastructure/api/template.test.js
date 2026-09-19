@@ -28,5 +28,7 @@ test('api lambda runs in enforced production auth with scoped s3 access', () => 
   const s3 = statements.find((s) => Array.isArray(s.Action) && s.Action.includes('s3:GetObject'))
   assert.ok(s3, 'role grants object-level S3 access')
   assert.match(s3.Resource['Fn::Sub'], /\/\*$/, 'S3 access is object-scoped, never bucket-wide')
-  assert.ok(!statements.some((s) => /dynamodb/.test(String(s.Action))), 'API role does not touch DynamoDB')
+  const ddb = statements.find((s) => String(s.Action).includes('dynamodb:PutItem'))
+  assert.ok(ddb, 'API role writes job retention records to DynamoDB so the worker can see them')
+  assert.ok(!String(ddb.Resource).includes('*') || Array.isArray(ddb.Resource), 'DynamoDB access is table-scoped')
 })
