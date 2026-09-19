@@ -100,7 +100,7 @@
         "Cors": {
           "AllowCredentials": false,
           "AllowHeaders": ["authorization", "content-type"],
-          "AllowMethods": ["GET", "POST", "OPTIONS"],
+          "AllowMethods": ["*"],
           "AllowOrigins": ["*"],
           "MaxAge": 86400
         }
