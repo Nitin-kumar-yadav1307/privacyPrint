@@ -24,41 +24,12 @@ NOCLI=--no-cli-pager
 
 log() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
-
-DEPLOY_BUCKET="privacyprint-deploy-${ACCOUNT_ID}-${REGION}"
-log "Using deployment staging bucket s3://${DEPLOY_BUCKET}"
-if ! aws s3api head-bucket --bucket "$DEPLOY_BUCKET" 2>/dev/null; then
-  run aws s3api create-bucket \
-    --bucket "$DEPLOY_BUCKET" \
-    --region "$REGION" \
-    $([[ "$REGION" == "us-east-1" ]] && echo "" || echo "--create-bucket-configuration LocationConstraint=${REGION}")
-fi
-run aws s3api put-public-access-block --bucket "$DEPLOY_BUCKET" --public-access-block-configuration \
-  BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true || true
-
-# --- 1. S3 document storage -------------------------------------------------
-log "Deploying S3 document storage stack"
-run aws cloudformation deploy \
-  --template-file "$ROOT/infrastructure/s3/template.json" \
-  --stack-name privacyprint-document-storage \
-  --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
-DOCUMENT_BUCKET="$(aws cloudformation describe-stacks --stack-name privacyprint-document-storage \
-  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`DocumentBucketName`].OutputValue' --output text $NOCLI)"
-log "Document bucket: $DOCUMENT_BUCKET"
-
-# --- 2. DynamoDB tables -----------------------------------------------------
-log "Deploying DynamoDB stacks"
-run aws cloudformation deploy \
-  --template-file "$ROOT/infrastructure/dynamodb/template.json" \
-  --stack-name privacyprint-database \
-  --region "$REGION" --no-fail-on-empty-changeset $NOCLI
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1 || DRY_RUN=0
 run() { if [[ "$DRY_RUN" == 1 ]]; then echo "[dry-run] $*"; else "$@"; fi; }
 
 log "Checking AWS identity"
 run aws sts get-caller-identity --region "$REGION" $NOCLI
 ACCOUNT_ID="$(aws sts get-caller-identity --region "$REGION" --query Account --output text $NOCLI)"
-
 DEPLOY_BUCKET="privacyprint-deploy-${ACCOUNT_ID}-${REGION}"
 log "Using deployment staging bucket s3://${DEPLOY_BUCKET}"
 if ! aws s3api head-bucket --bucket "$DEPLOY_BUCKET" 2>/dev/null; then
