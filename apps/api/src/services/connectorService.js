@@ -31,11 +31,10 @@ function connectorStatus(tenantId, now = Date.now()) {
  * READY jobs await the shopkeeper's PRINT click; the connector must not
  * start printing by itself.
  * @param {string} tenantId
- * @returns {Array<Object>} Public-safe PRINTING jobs for this tenant
+ * @returns {Promise<Array<Object>>} Public-safe PRINTING jobs for this tenant
  */
-function listPrintingJobs(tenantId) {
-  return jobService
-    .getQueue(tenantId)
+async function listPrintingJobs(tenantId) {
+  return (await jobService.getQueue(tenantId))
     .filter((job) => job.status === JOB_STATUS.PRINTING)
 }
 
@@ -45,11 +44,11 @@ function listPrintingJobs(tenantId) {
  * @param {string} jobId
  * @param {string} tenantId
  * @param {{result: 'completed'|'failed', reason?: string}} report
- * @returns {Object|null} Updated public job, or null if unauthorized/not found
+ * @returns {Promise<Object|null>} Updated public job, or null if unauthorized/not found
  */
-function reportPrintResult(jobId, tenantId, { result, reason } = {}) {
+async function reportPrintResult(jobId, tenantId, { result, reason } = {}) {
   if (result === 'failed') {
-    const raw = jobService.getRaw(jobId)
+    const raw = await jobService.getRaw(jobId)
     if (!raw || raw.tenantId !== tenantId) return null
     if (raw.status !== JOB_STATUS.PRINTING) return jobService.getById(jobId)
     return jobService.failJob(jobId, reason)

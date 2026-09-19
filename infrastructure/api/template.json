@@ -49,6 +49,19 @@
               "Effect": "Allow",
               "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
               "Resource": { "Fn::Sub": "arn:aws:s3:::${DocumentBucketName}/*" }
+            }, {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:UpdateItem"
+              ],
+              "Resource": [
+                { "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/privacyprint-jobs" },
+                { "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/privacyprint-jobs/index/*" }
+              ]
             }]
           }
         }]
@@ -72,6 +85,7 @@
             "SHOP_DEMO_PASSCODE": { "Ref": "ShopDemoPasscode" },
             "CORS_ORIGIN": { "Ref": "CorsOrigin" },
             "DOCUMENT_BUCKET": { "Ref": "DocumentBucketName" },
+            "JOBS_TABLE": "privacyprint-jobs",
             "UPLOAD_DIR": "/tmp/uploads",
             "DATA_DIR": "/tmp/data"
           }

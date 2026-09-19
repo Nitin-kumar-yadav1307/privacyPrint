@@ -10,12 +10,9 @@ const { getS3Getter } = require('../services/s3Client')
  * PRINTING jobs for the authenticated shop — the connector's work queue.
  */
 function listJobs(req, res, next) {
-  try {
-    const jobs = connectorService.listPrintingJobs(req.authorizedTenantId)
-    res.json({ success: true, jobs })
-  } catch (err) {
-    next(err)
-  }
+  connectorService.listPrintingJobs(req.authorizedTenantId)
+    .then((jobs) => res.json({ success: true, jobs }))
+    .catch(next)
 }
 
 /**
@@ -31,7 +28,7 @@ async function getDocumentAsync(req, res) {
   const { jobId } = req.params
   const tenantId = req.authorizedTenantId
 
-  const job = jobService.getByIdAndTenant(jobId, tenantId)
+  const job = await jobService.getByIdAndTenant(jobId, tenantId)
   if (!job) {
     // 404, not 403 — never reveal other tenants' job ids.
     return res.status(404).json({
@@ -46,7 +43,7 @@ async function getDocumentAsync(req, res) {
     })
   }
 
-  const raw = jobService.getRaw(jobId)
+  const raw = await jobService.getRaw(jobId)
 
   // Remote storage: stream the private S3 object straight to the connector.
   // The exact recorded bucket/key is used — the tenant-authorized jobId has
@@ -103,7 +100,7 @@ async function getDocumentAsync(req, res) {
  * @body {string} [mode] - "CUPS" | "PDF_FALLBACK" (informational)
  * @body {string} [reason] - required for failures
  */
-function completePrint(req, res, next) {
+async function completePrint(req, res, next) {
   try {
     const { jobId } = req.params
     const { result, mode, reason } = req.body || {}
@@ -121,7 +118,7 @@ function completePrint(req, res, next) {
       })
     }
 
-    const job = connectorService.reportPrintResult(jobId, req.authorizedTenantId, {
+    const job = await connectorService.reportPrintResult(jobId, req.authorizedTenantId, {
       result,
       reason,
     })

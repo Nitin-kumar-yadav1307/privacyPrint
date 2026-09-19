@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const jobs = require('./jobService')
-const { UPLOAD_DIR, DATA_DIR } = require('../config')
+const { UPLOAD_DIR, DATA_DIR, JOBS_TABLE } = require('../config')
 const { JOB_STATUS } = require('../constants')
 const { removeDocument } = require('./documentStorage')
 const { processExpiredJobs } = require('./expiryService')
@@ -10,13 +10,19 @@ const ORPHAN_GRACE_MS = 10 * 60 * 1000
 
 // Run before accepting requests, with exclusive ownership of these directories.
 async function recoverJobs(now = Date.now(), log = console.log, onError = console.error) {
+  if (JOBS_TABLE) {
+    // Remote (DynamoDB) store: documents live in S3 and retention is enforced
+    // by the deployed expiry-worker Lambda, so there is nothing to sweep here.
+    log('[RECOVERY] Remote job store — filesystem recovery not applicable')
+    return
+  }
   fs.mkdirSync(UPLOAD_DIR, { recursive: true, mode: 0o700 })
   if (DATA_DIR === UPLOAD_DIR) throw new Error('Metadata and uploads must use separate directories')
   const referenced = new Set()
   // Validate every path before any destructive recovery action. Remote (S3)
   // documents have no local file and are managed by the expiry worker, not
   // by filesystem recovery.
-  for (const job of jobs.allJobs()) {
+  for (const job of await jobs.allJobs()) {
     if (job.document.storage === 's3') continue
     const filePath = path.resolve(job.document.path)
     if (path.dirname(filePath) !== UPLOAD_DIR || path.basename(filePath) === '.gitkeep') {
@@ -25,14 +31,14 @@ async function recoverJobs(now = Date.now(), log = console.log, onError = consol
     referenced.add(filePath)
   }
   await processExpiredJobs(now, log, onError)
-  for (const job of jobs.allJobs()) {
+  for (const job of await jobs.allJobs()) {
     if (![JOB_STATUS.CREATED, JOB_STATUS.READY, JOB_STATUS.PRINTING, JOB_STATUS.PRINTED].includes(job.status)) continue
     if (job.document.storage === 's3') continue
     try {
       fs.lstatSync(job.document.path)
     } catch (error) {
       if (error.code !== 'ENOENT') throw error
-      jobs.failJob(job.jobId, 'Temporary document unavailable after restart')
+      await jobs.failJob(job.jobId, 'Temporary document unavailable after restart')
       log('[RECOVERY] Missing document job marked FAILED')
     }
   }

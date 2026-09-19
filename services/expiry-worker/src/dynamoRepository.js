@@ -18,12 +18,14 @@ function createRepository(env = process.env) {
 
   function unmarshall(job) {
     return {
-      jobId: job.jobId.S,
-      tenantId: job.tenantId.S,
-      status: job.status.S,
-      createdAt: job.createdAt.S,
-      expiresAt: job.expiresAt ? job.expiresAt.S : undefined,
-      document: job.document ? JSON.parse(job.document.S) : undefined,
+      jobId: job.jobId,
+      tenantId: job.tenantId,
+      status: job.status,
+      createdAt: job.createdAt,
+      expiresAt: job.expiresAt,
+      // The API (DynamoDB Document Client) stores document as a native map;
+      // accept the legacy JSON-string form too.
+      document: typeof job.document === 'string' ? JSON.parse(job.document) : job.document,
     }
   }
 

@@ -29,10 +29,10 @@ try {
     for (const name of ['ready', 'printed', 'printing', 'missing', 'abandoned', 'cancelled']) {
       const filePath = path.join(process.env.UPLOAD_DIR, name + '.txt');
       fs.writeFileSync(filePath, 'Synthetic restart document');
-      const job = jobs.create({ tenantId: 'SHOP-A', printSettings: { copies: 2, retentionMinutes: 10 },
+      const job = await jobs.create({ tenantId: 'SHOP-A', printSettings: { copies: 2, retentionMinutes: 10 },
         document: { filename: name + '.txt', originalName: name, path: filePath } });
-      if (['printed', 'printing'].includes(name)) jobs.startPrinting(job.jobId, 'SHOP-A');
-      if (name === 'printed') jobs.markPrinted(job.jobId, 'SHOP-A');
+      if (['printed', 'printing'].includes(name)) await jobs.startPrinting(job.jobId, 'SHOP-A');
+      if (name === 'printed') await jobs.markPrinted(job.jobId, 'SHOP-A');
       if (name === 'cancelled') await jobs.cancelJob(job.jobId, 'SHOP-A', 'Synthetic cancel');
     }
   `)
@@ -51,10 +51,10 @@ try {
   fs.mkdirSync(path.join(uploads, 'untouched-directory'))
   child(`${load}
     const assert = require('node:assert/strict');
-    assert.equal(jobs.allJobs().length, 6);
-    assert.equal(jobs.getByTenant('SHOP-B').length, 0);
+    assert.equal((await jobs.allJobs()).length, 6);
+    assert.equal((await jobs.getByTenant('SHOP-B')).length, 0);
     ${recover}
-    const byName = Object.fromEntries(jobs.allJobs().map(j => [j.document.originalName, j]));
+    const byName = Object.fromEntries((await jobs.allJobs()).map(j => [j.document.originalName, j]));
     assert.equal(byName.ready.status, 'READY');
     assert.equal(byName.printed.status, 'EXPIRED');
     assert.equal(byName.printed.printedAt, ${JSON.stringify(printed.printedAt)});
@@ -64,7 +64,7 @@ try {
     assert.equal(byName.missing.status, 'FAILED');
     assert.equal(byName.abandoned.status, 'CANCELLED');
     assert.equal(byName.cancelled.status, 'CANCELLED');
-    assert.equal(jobs.getById(byName.ready.jobId).document.path, undefined);
+    assert.equal((await jobs.getById(byName.ready.jobId)).document.path, undefined);
   `)
   assert.ok(!fs.existsSync(path.join(uploads, 'old-orphan.txt')))
   assert.ok(!fs.existsSync(path.join(uploads, 'printed.txt')))
@@ -82,13 +82,13 @@ try {
     const fs = require('node:fs'); const path = require('node:path'); const assert = require('node:assert/strict');
     const target = path.join(process.env.DATA_DIR, 'jobs.json');
     const original = fs.readFileSync(target); fs.unlinkSync(target); fs.mkdirSync(target);
-    const ready = jobs.allJobs().find(j => j.status === 'READY');
+    const ready = (await jobs.allJobs()).find(j => j.status === 'READY');
     try {
-      assert.throws(() => jobs.startPrinting(ready.jobId, 'SHOP-A'), /could not be saved/);
+      await assert.rejects(() => jobs.startPrinting(ready.jobId, 'SHOP-A'), /could not be saved/);
       assert.equal(ready.status, 'READY');
-      const count = jobs.allJobs().length;
-      assert.throws(() => jobs.create({ tenantId: 'SHOP-A', printSettings: { copies: 1 }, document: ready.document }), /could not be saved/);
-      assert.equal(jobs.allJobs().length, count);
+      const count = (await jobs.allJobs()).length;
+      await assert.rejects(() => jobs.create({ tenantId: 'SHOP-A', printSettings: { copies: 1 }, document: ready.document }), /could not be saved/);
+      assert.equal((await jobs.allJobs()).length, count);
     } finally { fs.rmdirSync(target); fs.writeFileSync(target, original); }
   `)
   console.log('✓ Failed metadata writes roll back creation and state transitions')

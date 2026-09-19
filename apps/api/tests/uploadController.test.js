@@ -49,12 +49,12 @@ test('controller awaits upload confirmation and persists returned local metadata
     },
   }, (error) => { forwarded = error })
   assert.deepEqual(uploadArgs, { file: req.file, tenantId: 'TENANT-001' })
-  assert.equal(jobs.allJobs().length, 0)
+  assert.equal((await jobs.allJobs()).length, 0)
   assert.equal(response, undefined)
   resolveUpload({ storage: 'local', path: req.file.path, filename: 'confirmed.txt', originalName: 'Confirmed synthetic.txt' })
   await pending
   assert.equal(forwarded, undefined)
-  const stored = jobs.getRaw(response.job.jobId)
+  const stored = await jobs.getRaw(response.job.jobId)
   assert.equal(stored.document.filename, 'confirmed.txt')
   assert.equal(stored.document.originalName, 'Confirmed synthetic.txt')
   assert.equal(stored.document.path, req.file.path)
@@ -64,16 +64,16 @@ test('controller awaits upload confirmation and persists returned local metadata
 
 test('upload failure creates no job and removes the unowned staging file', async () => {
   const req = request('rejected.txt')
-  const count = jobs.allJobs().length
+  const count = (await jobs.allJobs()).length
   const failure = new Error('Synthetic uploader failure')
   let forwarded
   const pending = createJob(req, {
     status() { assert.fail('Failed upload must not send a success response') },
   }, (error) => { forwarded = error })
-  assert.equal(jobs.allJobs().length, count)
+  assert.equal((await jobs.allJobs()).length, count)
   rejectUpload(failure)
   await pending
   assert.equal(forwarded, failure)
-  assert.equal(jobs.allJobs().length, count)
+  assert.equal((await jobs.allJobs()).length, count)
   assert.ok(!fs.existsSync(req.file.path))
 })

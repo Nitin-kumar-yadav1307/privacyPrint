@@ -18,11 +18,11 @@ const now = Date.now()
 const errors = []
 const tick = async (time = now) => processExpiredJobs(time, () => {}, (message) => errors.push(message))
 
-function create() {
+async function create() {
   const filename = `synthetic-${++sequence}.txt`
   const filePath = path.join(UPLOAD_DIR, filename)
   fs.writeFileSync(filePath, 'Synthetic cleanup test only')
-  const job = jobs.create({
+  const job = await jobs.create({
     tenantId: 'TENANT-001',
     printSettings: { copies: 1, retentionMinutes: 10 },
     document: { filename, originalName: filename, path: filePath },
@@ -30,16 +30,16 @@ function create() {
   return jobs.getRaw(job.jobId)
 }
 
-function print(job) {
-  jobs.startPrinting(job.jobId, job.tenantId)
-  jobs.markPrinted(job.jobId, job.tenantId)
+async function print(job) {
+  await jobs.startPrinting(job.jobId, job.tenantId)
+  await jobs.markPrinted(job.jobId, job.tenantId)
 }
 
 (async () => {
 try {
   assert.equal(multerDir, UPLOAD_DIR)
-  const printed = create()
-  print(printed)
+  const printed = await create()
+  await print(printed)
   printed.expiresAt = new Date(now + 1000).toISOString()
   await tick()
   assert.ok(fs.existsSync(printed.document.path), 'Retained until deadline')
@@ -50,10 +50,10 @@ try {
   const expiredAt = printed.expiredAt
   await jobs.expireJob(printed.jobId)
   assert.equal(printed.expiredAt, expiredAt)
-  assert.equal(jobs.getById(printed.jobId).document.path, undefined)
+  assert.equal((await jobs.getById(printed.jobId)).document.path, undefined)
   console.log('✓ Shared upload configuration, deadline deletion and idempotency')
 
-  const cancelled = create()
+  const cancelled = await create()
   assert.equal(await jobs.cancelJob(cancelled.jobId, 'TENANT-002'), null)
   assert.ok(fs.existsSync(cancelled.document.path))
   await jobs.cancelJob(cancelled.jobId, cancelled.tenantId, 'Customer revoked')
@@ -61,33 +61,33 @@ try {
   assert.ok(!fs.existsSync(cancelled.document.path))
   await jobs.cancelJob(cancelled.jobId, cancelled.tenantId, 'Second reason')
   assert.equal(cancelled.cancellationReason, 'Customer revoked')
-  const printing = create()
-  jobs.startPrinting(printing.jobId, printing.tenantId)
+  const printing = await create()
+  await jobs.startPrinting(printing.jobId, printing.tenantId)
   await jobs.cancelJob(printing.jobId, printing.tenantId)
   await jobs.expireJob(printing.jobId)
   assert.equal(printing.status, 'PRINTING')
   assert.ok(fs.existsSync(printing.document.path))
   console.log('✓ Cancellation removes files only for eligible matching-tenant jobs')
 
-  const abandoned = create()
+  const abandoned = await create()
   abandoned.createdAt = new Date(now - 600001).toISOString()
   await tick()
   assert.equal(abandoned.status, 'CANCELLED')
   assert.ok(!fs.existsSync(abandoned.document.path))
-  const missing = create()
+  const missing = await create()
   fs.unlinkSync(missing.document.path)
   await jobs.cancelJob(missing.jobId, missing.tenantId)
   assert.equal(missing.status, 'CANCELLED')
   console.log('✓ Abandonment cleanup and already-missing file handling')
 
-  const failed = create()
-  print(failed)
+  const failed = await create()
+  await print(failed)
   failed.expiresAt = new Date(now - 1).toISOString()
   fs.unlinkSync(failed.document.path)
   // A directory deterministically causes unlink failure even when tests run as root.
   fs.mkdirSync(failed.document.path)
-  const healthy = create()
-  print(healthy)
+  const healthy = await create()
+  await print(healthy)
   healthy.expiresAt = failed.expiresAt
   await tick()
   assert.equal(failed.status, 'PRINTED')
@@ -116,7 +116,7 @@ try {
   assert.ok(fs.existsSync(keep))
   console.log('✓ Storage boundary and symlink-target protection')
 
-  const tagged = create()
+  const tagged = await create()
   for (const storage of ['s3', 'unknown', null]) {
     tagged.document.storage = storage
     await assert.rejects(() => jobs.cancelJob(tagged.jobId, tagged.tenantId), /(cannot remove|incomplete)/)

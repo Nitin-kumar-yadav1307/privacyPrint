@@ -1,10 +1,15 @@
 /**
- * Local single-process job store with atomic metadata snapshots.
- * Jobs are restored on restart; production will use DynamoDB.
+ * Job lifecycle service.
+ *
+ * Storage is pluggable: the local single-process file store (development) or
+ * DynamoDB (AWS deployment, selected by JOBS_TABLE). Every operation is
+ * awaited, so the deployed expiry-worker Lambda can act on the same records
+ * the API writes. Transitions are applied to a working copy and persisted as
+ * a whole record; a failed persist leaves the previous state untouched.
  */
 
 const { JOB_STATUS } = require('../constants')
-const { DATA_DIR } = require('../config')
+const { DATA_DIR, JOBS_TABLE } = require('../config')
 const { removeDocument } = require('./documentStorage')
 const {
   createJob: _createJob,
@@ -16,80 +21,139 @@ const {
   markCancelled,
   toPublic,
 } = require('../models/Job')
-
 const { openJobStore } = require('./jobStore')
-const { jobs, save } = openJobStore(DATA_DIR)
+const { createDynamoJobRepository } = require('./dynamoJobRepository')
 
-function update(job, transition) {
-  const previous = structuredClone(job)
+/** Local single-process repository over the atomic JSON snapshot store. */
+function createLocalJobRepository(directory) {
+  const { jobs, save } = openJobStore(directory)
+  return {
+    isRemote: false,
+    async create(job) {
+      const stored = structuredClone(job)
+      jobs.set(stored.jobId, stored)
+      try {
+        save()
+      } catch (error) {
+        jobs.delete(stored.jobId)
+        throw error
+      }
+      return stored
+    },
+    async put(job) {
+      const previous = jobs.get(job.jobId)
+      const previousClone = previous ? structuredClone(previous) : undefined
+      const stored = structuredClone(job)
+      jobs.set(stored.jobId, stored)
+      try {
+        save()
+      } catch (error) {
+        if (previousClone) jobs.set(job.jobId, previousClone)
+        else jobs.delete(job.jobId)
+        throw error
+      }
+      return stored
+    },
+    /** Local handle: intentionally the live object (same-process mutation idiom). */
+    async get(jobId) {
+      return jobs.get(jobId) || null
+    },
+    /** Persist after an in-place mutation; restores identity on failure. */
+    async checkpoint(job, previousClone) {
+      try {
+        save()
+      } catch (error) {
+        for (const key of Object.keys(job)) delete job[key]
+        Object.assign(job, previousClone)
+        throw error
+      }
+    },
+    async listByTenant(tenantId) {
+      return Array.from(jobs.values())
+        .filter((job) => job.tenantId === tenantId)
+        .map((job) => structuredClone(job))
+    },
+    async listAll() {
+      return Array.from(jobs.values()).map((job) => structuredClone(job))
+    },
+  }
+}
+
+const repository = JOBS_TABLE
+  ? createDynamoJobRepository()
+  : createLocalJobRepository(DATA_DIR)
+
+/** Load, verify tenancy (when given) and apply a transition to a fresh copy. */
+async function transition(jobId, tenantId, mutate) {
+  const current = await repository.get(jobId)
+  if (!current) return null
+  if (tenantId !== null && current.tenantId !== tenantId) return null
+  // Remote (DynamoDB): never mutate the fetched copy in place — persist a
+  // whole record so a failed write leaves the stored state untouched.
+  if (repository.isRemote) {
+    const next = structuredClone(current)
+    mutate(next)
+    await repository.put(next)
+    return toPublic(next)
+  }
+  // Local single-process idiom (pre-existing): mutate the live stored object
+  // so same-process handles observe transitions; save() afterwards. A failed
+  // persist restores the object in place, preserving identity.
+  const previous = structuredClone(current)
   try {
-    transition(job)
-    save()
+    mutate(current)
+    await repository.checkpoint(current, previous)
   } catch (error) {
-    for (const key of Object.keys(job)) delete job[key]
-    Object.assign(job, previous)
     throw error
   }
-  return toPublic(job)
+  return toPublic(current)
 }
 
 function failJob(jobId, reason) {
-  const job = jobs.get(jobId)
-  return job ? update(job, (record) => markFailed(record, reason)) : null
+  return transition(jobId, null, (job) => markFailed(job, reason))
 }
 
 /**
  * Create and store a new job.
  * @param {Object} data - Job creation data (tenantId, printSettings, document)
- * @returns {Object} The created job (public-safe)
+ * @returns {Promise<Object>} The created job (public-safe)
  */
-function create(data) {
+async function create(data) {
   const job = _createJob(data)
   // Mark as READY once stored
   markReady(job)
-  jobs.set(job.jobId, job)
-  try {
-    save()
-  } catch (error) {
-    jobs.delete(job.jobId)
-    throw error
-  }
+  await repository.create(job)
   return toPublic(job)
 }
 
 /**
  * Retrieve a job by its ID.
  * @param {string} jobId
- * @returns {Object|null} Public-safe job or null
+ * @returns {Promise<Object|null>} Public-safe job or null
  */
-function getById(jobId) {
-  const job = jobs.get(jobId)
+async function getById(jobId) {
+  const job = await repository.get(jobId)
   return job ? toPublic(job) : null
 }
 
 /**
  * Retrieve all jobs for a specific tenant.
- * This enforces server-side tenant isolation — callers can only see
- * jobs that belong to the tenant they are authorized for.
+ * Server-side tenant isolation: only jobs matching the tenant are returned.
  * @param {string} tenantId
- * @returns {Array<Object>} Public-safe jobs for this tenant
+ * @returns {Promise<Array<Object>>} Public-safe jobs for this tenant
  */
-function getByTenant(tenantId) {
-  return Array.from(jobs.values())
-    .filter((job) => job.tenantId === tenantId)
-    .map(toPublic)
+async function getByTenant(tenantId) {
+  return (await repository.listByTenant(tenantId)).map(toPublic)
 }
 
 /**
  * Find a job by ID and verify it belongs to the given tenant.
- * This is the authorization check — even if a client provides a valid
- * jobId, if the tenantId doesn't match, the job is not returned.
  * @param {string} jobId
  * @param {string} tenantId
- * @returns {Object|null} Public-safe job if authorized, else null
+ * @returns {Promise<Object|null>} Public-safe job if authorized, else null
  */
-function getByIdAndTenant(jobId, tenantId) {
-  const job = jobs.get(jobId)
+async function getByIdAndTenant(jobId, tenantId) {
+  const job = await repository.get(jobId)
   if (!job || job.tenantId !== tenantId) {
     return null
   }
@@ -100,35 +164,26 @@ function getByIdAndTenant(jobId, tenantId) {
  * Mark a job as PRINTING (shopkeeper clicked PRINT).
  * @param {string} jobId
  * @param {string} tenantId
- * @returns {Object|null} Updated public job or null if unauthorized/not found
+ * @returns {Promise<Object|null>} Updated public job or null if unauthorized/not found
  */
 function startPrinting(jobId, tenantId) {
-  const job = jobs.get(jobId)
-  if (!job || job.tenantId !== tenantId) {
-    return null
-  }
-  if (job.status !== JOB_STATUS.READY) {
-    return toPublic(job)
-  }
-  return update(job, markPrinting)
+  return transition(jobId, tenantId, (job) => {
+    if (job.status !== JOB_STATUS.READY) return
+    markPrinting(job)
+  })
 }
 
 /**
  * Mark a job as PRINTED and start retention countdown.
  * @param {string} jobId
  * @param {string} tenantId
- * @returns {Object|null} Updated public job or null if unauthorized/not found
+ * @returns {Promise<Object|null>} Updated public job or null if unauthorized/not found
  */
 function markPrinted(jobId, tenantId) {
-  const job = jobs.get(jobId)
-  if (!job || job.tenantId !== tenantId) {
-    return null
-  }
-  if (job.status !== JOB_STATUS.PRINTING) {
-    return toPublic(job)
-  }
-  const retentionMinutes = job.printSettings.retentionMinutes
-  return update(job, (record) => _markPrinted(record, retentionMinutes))
+  return transition(jobId, tenantId, (job) => {
+    if (job.status !== JOB_STATUS.PRINTING) return
+    _markPrinted(job, job.printSettings.retentionMinutes)
+  })
 }
 
 /**
@@ -140,7 +195,7 @@ function markPrinted(jobId, tenantId) {
  * @returns {Promise<Object|null>} Updated public job or null if not found
  */
 async function expireJob(jobId) {
-  const job = jobs.get(jobId)
+  const job = await repository.get(jobId)
   if (!job) {
     return null
   }
@@ -148,7 +203,7 @@ async function expireJob(jobId) {
     return toPublic(job)
   }
   await removeDocument(job.document)
-  return update(job, markExpired)
+  return transition(jobId, null, markExpired)
 }
 
 /**
@@ -159,7 +214,7 @@ async function expireJob(jobId) {
  * @returns {Promise<Object|null>} Updated public job or null if unauthorized/not found
  */
 async function cancelJob(jobId, tenantId, reason) {
-  const job = jobs.get(jobId)
+  const job = await repository.get(jobId)
   if (!job || job.tenantId !== tenantId) {
     return null
   }
@@ -168,34 +223,34 @@ async function cancelJob(jobId, tenantId, reason) {
     return toPublic(job)
   }
   await removeDocument(job.document)
-  return update(job, (record) => markCancelled(record, reason))
+  return transition(jobId, null, (record) => markCancelled(record, reason))
 }
 
 /**
  * Get all jobs (for admin/debug — not exposed to tenants).
- * @returns {Array<Object>} All jobs (private, with internal fields)
+ * @returns {Promise<Array<Object>>} All jobs (private, with internal fields)
  */
-function allJobs() {
-  return Array.from(jobs.values())
+async function allJobs() {
+  return repository.listAll()
 }
 
 /**
  * Get a job without public filtering (internal use only).
  * @param {string} jobId
- * @returns {Object|undefined} The raw job object
+ * @returns {Promise<Object|undefined>} The raw job object
  */
-function getRaw(jobId) {
-  return jobs.get(jobId)
+async function getRaw(jobId) {
+  return repository.get(jobId)
 }
 
 /**
  * Get the public-safe status of a job (lightweight — for polling).
  * @param {string} jobId
  * @param {string} tenantId
- * @returns {Object|null} Status info { jobId, status, tenantId } or null if unauthorized
+ * @returns {Promise<Object|null>} Status info { jobId, status, tenantId } or null if unauthorized
  */
-function getStatus(jobId, tenantId) {
-  const job = jobs.get(jobId)
+async function getStatus(jobId, tenantId) {
+  const job = await repository.get(jobId)
   if (!job || job.tenantId !== tenantId) {
     return null
   }
@@ -209,12 +264,11 @@ function getStatus(jobId, tenantId) {
 /**
  * Get the printer queue for a tenant — READY and PRINTING jobs.
  * @param {string} tenantId
- * @returns {Array<Object>} Public-safe jobs that are ready or printing
+ * @returns {Promise<Array<Object>>} Public-safe jobs that are ready or printing
  */
-function getQueue(tenantId) {
-  return Array.from(jobs.values())
-    .filter((job) => job.tenantId === tenantId &&
-      (job.status === JOB_STATUS.READY || job.status === JOB_STATUS.PRINTING))
+async function getQueue(tenantId) {
+  return (await repository.listByTenant(tenantId))
+    .filter((job) => job.status === JOB_STATUS.READY || job.status === JOB_STATUS.PRINTING)
     .map(toPublic)
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
 }
@@ -227,13 +281,6 @@ function getQueue(tenantId) {
  * @returns {Object|null} Updated public job or null if unauthorized/not found
  */
 function autoCompletePrint(jobId, tenantId) {
-  const job = jobs.get(jobId)
-  if (!job || job.tenantId !== tenantId) {
-    return null
-  }
-  if (job.status !== JOB_STATUS.PRINTING) {
-    return toPublic(job)
-  }
   return markPrinted(jobId, tenantId)
 }
 

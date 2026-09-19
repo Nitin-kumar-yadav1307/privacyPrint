@@ -32,7 +32,7 @@ async function runTests() {
     const accepted = await submit('TENANT-001', JSON.stringify(settings))
     assert.equal(accepted.status, 201)
     const validJob = (await accepted.json()).job
-    const validPath = jobs.getRaw(validJob.jobId).document.path
+    const validPath = (await jobs.getRaw(validJob.jobId)).document.path
     const expectedFiles = fs.readdirSync(uploadDir)
     assert.equal(expectedFiles.length, 1)
 
@@ -53,7 +53,7 @@ async function runTests() {
       assert.equal(response.status, 400)
       assert.equal((await response.json()).error, 'Validation error')
       assert.deepEqual(fs.readdirSync(uploadDir), expectedFiles, 'Rejected upload must be removed')
-      assert.equal(jobs.allJobs().length, 1, 'Rejected requests must not create jobs')
+      assert.equal((await jobs.allJobs()).length, 1, 'Rejected requests must not create jobs')
     }
     const noFile = await submit('TENANT-001', JSON.stringify(settings), false)
     assert.equal(noFile.status, 400)
@@ -71,7 +71,7 @@ async function runTests() {
     assert.equal(spoofedResponse.status, 400)
     assert.match((await spoofedResponse.json()).message, /does not match its declared type/)
     assert.deepEqual(fs.readdirSync(uploadDir), expectedFiles, 'Spoofed upload must be removed')
-    assert.equal(jobs.allJobs().length, 1, 'Spoofed upload must not create a job')
+    assert.equal((await jobs.allJobs()).length, 1, 'Spoofed upload must not create a job')
     console.log('✓ Document whose content contradicts its declared type is rejected and removed')
 
     // Deterministic failure cases at the controller boundary.
@@ -108,7 +108,7 @@ async function runTests() {
     }, (error) => { forwarded = error })
     assert.equal(forwarded, responseFailure)
     assert.ok(fs.existsSync(temporaryPath), 'A stored job owns its document even if response fails')
-    assert.equal(jobs.allJobs().length, 2)
+    assert.equal((await jobs.allJobs()).length, 2)
     console.log('✓ Response failure does not remove an accepted job document')
     console.log('All rejected-upload checks passed')
   } finally {

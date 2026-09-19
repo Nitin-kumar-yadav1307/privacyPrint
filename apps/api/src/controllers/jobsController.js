@@ -119,7 +119,7 @@ async function createJob(req, res, next) {
       size: req.file.size,
     }
 
-    const job = jobService.create({
+    const job = await jobService.create({
       tenantId: tenant.id,
       printSettings: settings,
       document: documentInfo,
@@ -184,7 +184,7 @@ function validatePrintSettings(settings) {
  * List all jobs for a specific tenant.
  * Server-side tenant isolation: only jobs matching the tenantId are returned.
  */
-function listJobs(req, res, next) {
+async function listJobs(req, res, next) {
   try {
     const tenantId = requestTenantId(req)
 
@@ -195,7 +195,7 @@ function listJobs(req, res, next) {
       })
     }
 
-    const jobs = jobService.getByTenant(tenantId)
+    const jobs = await jobService.getByTenant(tenantId)
 
     res.json({
       success: true,
@@ -211,7 +211,7 @@ function listJobs(req, res, next) {
  * Retrieve a specific job.
  * Server-side authorization: the tenantId must match the job's tenant.
  */
-function getJob(req, res, next) {
+async function getJob(req, res, next) {
   try {
     const { jobId } = req.params
     const tenantId = requestTenantId(req)
@@ -223,7 +223,7 @@ function getJob(req, res, next) {
       })
     }
 
-    const job = jobService.getByIdAndTenant(jobId, tenantId)
+    const job = await jobService.getByIdAndTenant(jobId, tenantId)
 
     if (!job) {
       // Return 404 to avoid leaking job existence across tenants
@@ -246,7 +246,7 @@ function getJob(req, res, next) {
  * POST /jobs/:jobId/print?tenantId=<id>
  * Shopkeeper clicked PRINT — transition to PRINTING.
  */
-function startPrint(req, res, next) {
+async function startPrint(req, res, next) {
   try {
     const { jobId } = req.params
     const tenantId = requestTenantId(req)
@@ -258,7 +258,7 @@ function startPrint(req, res, next) {
       })
     }
 
-    const job = jobService.startPrinting(jobId, tenantId)
+    const job = await jobService.startPrinting(jobId, tenantId)
 
     if (!job) {
       return res.status(404).json({
@@ -282,7 +282,7 @@ function startPrint(req, res, next) {
  * Printer simulator reports print completion.
  * Transitions job to PRINTED and starts retention countdown.
  */
-function completePrint(req, res, next) {
+async function completePrint(req, res, next) {
   try {
     const { jobId } = req.params
     const tenantId = requestTenantId(req)
@@ -294,7 +294,7 @@ function completePrint(req, res, next) {
       })
     }
 
-    const job = jobService.markPrinted(jobId, tenantId)
+    const job = await jobService.markPrinted(jobId, tenantId)
 
     if (!job) {
       return res.status(404).json({
@@ -317,7 +317,7 @@ function completePrint(req, res, next) {
  * GET /jobs/:jobId/status?tenantId=<id>
  * Lightweight status check — returns just the jobId and status for polling.
  */
-function getStatus(req, res, next) {
+async function getStatus(req, res, next) {
   try {
     const { jobId } = req.params
     const tenantId = requestTenantId(req)
@@ -329,7 +329,7 @@ function getStatus(req, res, next) {
       })
     }
 
-    const status = jobService.getStatus(jobId, tenantId)
+    const status = await jobService.getStatus(jobId, tenantId)
 
     if (!status) {
       return res.status(404).json({
@@ -352,7 +352,7 @@ function getStatus(req, res, next) {
  * GET /jobs/queue?tenantId=<id>
  * Get the printer queue for a shop — READY and PRINTING jobs.
  */
-function getQueue(req, res, next) {
+async function getQueue(req, res, next) {
   try {
     const tenantId = requestTenantId(req)
 
@@ -363,7 +363,7 @@ function getQueue(req, res, next) {
       })
     }
 
-    const queueJobs = jobService.getQueue(tenantId)
+    const queueJobs = await jobService.getQueue(tenantId)
 
     res.json({
       success: true,
@@ -379,7 +379,7 @@ function getQueue(req, res, next) {
  * POST /jobs/:jobId/autocomplete?tenantId=<id>
  * Printer simulator auto-completes a PRINTING job.
  */
-function autoComplete(req, res, next) {
+async function autoComplete(req, res, next) {
   try {
     const { jobId } = req.params
     const tenantId = requestTenantId(req)
@@ -391,7 +391,7 @@ function autoComplete(req, res, next) {
       })
     }
 
-    const job = jobService.autoCompletePrint(jobId, tenantId)
+    const job = await jobService.autoCompletePrint(jobId, tenantId)
 
     if (!job) {
       return res.status(404).json({

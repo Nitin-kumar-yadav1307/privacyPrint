@@ -40,8 +40,8 @@ test.after(() => {
   delete process.env.DOCUMENT_BUCKET
 })
 
-function createJob() {
-  const job = jobService.create({
+async function createJob() {
+  const job = await jobService.create({
     tenantId: 'TENANT-001',
     printSettings: { copies: 1, retentionMinutes: 10 },
     document: {
@@ -67,14 +67,14 @@ test('document removal deletes the recorded S3 object, not a local path', async 
 })
 
 test('cancelling an S3-backed job deletes the object before the status change', async () => {
-  const job = createJob()
-  assert.equal(jobService.getRaw(job.jobId).document.storage, 's3')
+  const job = await createJob()
+  assert.equal((await jobService.getRaw(job.jobId)).document.storage, 's3')
   const updated = await jobService.cancelJob(job.jobId, job.tenantId, 'Test cancel')
   assert.equal(updated.status, 'CANCELLED')
   const last = deleteCalls.pop()
   assert.equal(last.Bucket, 'privacyprint-test-bucket')
   assert.equal(last.Key, 'documents/TENANT-001/object-key-1')
-  assert.equal(jobService.getById(job.jobId).document.path, undefined)
+  assert.equal((await jobService.getById(job.jobId)).document.path, undefined)
 })
 
 function buildApp() {
@@ -99,8 +99,8 @@ async function request(app, url) {
 }
 
 test('connector streams an S3 document only for its own PRINTING job', async () => {
-  const job = createJob()
-  jobService.startPrinting(job.jobId, job.tenantId)
+  const job = await createJob()
+  await jobService.startPrinting(job.jobId, job.tenantId)
 
   const ok = await request(buildApp(), `/connector/jobs/${job.jobId}/document`)
   assert.equal(ok.status, 200)
@@ -118,8 +118,8 @@ test('connector streams an S3 document only for its own PRINTING job', async () 
 })
 
 test('a missing S3 object surfaces as 404, not a crash', async () => {
-  const job = createJob()
-  jobService.startPrinting(job.jobId, job.tenantId)
+  const job = await createJob()
+  await jobService.startPrinting(job.jobId, job.tenantId)
   getResults.delete('documents/TENANT-001/object-key-1')
   const missing = await request(buildApp(), `/connector/jobs/${job.jobId}/document`)
   assert.equal(missing.status, 404)

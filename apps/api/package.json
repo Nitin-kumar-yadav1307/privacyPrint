@@ -8,13 +8,14 @@
         "start": "node src/server.js",
         "dev": "node src/server.js",
         "lint": "echo 'No linter configured' && exit 0",
-        "test": "node --test tests/config.test.js tests/connector.test.js tests/documentUploader.test.js tests/fileValidation.test.js tests/s3Storage.test.js tests/uploadController.test.js tests/tenants.test.js && node tests/restart.test.js && node tests/cleanup.test.js && node tests/rejectedUploads.test.js && node tests/jobs.test.js"
+        "test": "node --test tests/config.test.js tests/connector.test.js tests/dynamoJobStore.test.js tests/documentUploader.test.js tests/fileValidation.test.js tests/s3Storage.test.js tests/uploadController.test.js tests/tenants.test.js && node tests/restart.test.js && node tests/cleanup.test.js && node tests/rejectedUploads.test.js && node tests/jobs.test.js"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "dependencies": {
         "@aws-sdk/client-s3": "^3.0.0",
+        "@aws-sdk/lib-dynamodb": "^3.0.0",
         "cors": "^2.8.6",
         "dotenv": "^17.4.2",
         "express": "^5.2.1",

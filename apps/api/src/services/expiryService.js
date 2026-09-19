@@ -3,7 +3,7 @@ const { JOB_STATUS } = require('../constants')
 
 /** A failed removal leaves the state unchanged and is retried on the next tick. */
 async function processExpiredJobs(now = Date.now(), log = console.log, onError = console.error) {
-  for (const job of jobService.allJobs()) {
+  for (const job of await jobService.allJobs()) {
     try {
       if (job.status === JOB_STATUS.PRINTED && job.expiresAt &&
           now >= Date.parse(job.expiresAt)) {

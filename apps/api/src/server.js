@@ -56,14 +56,22 @@ app.use(errorHandler)
 // Start server and background processes only when run directly
 if (require.main === module) {
   require('./services/recoveryService').recoverJobs()
-  startExpiryChecker()
-
-  const server = app.listen(PORT, () => {
-    console.log(`PrivacyPrint API server running on port ${PORT}`)
-    console.log(`Health: http://localhost:${PORT}/api/health`)
-  })
-
-  module.exports = { app, server }
+    .then(() => {
+      if (process.env.JOBS_TABLE) {
+        console.log('[EXPIRY] Remote store — retention is enforced by the expiry-worker Lambda')
+      } else {
+        startExpiryChecker()
+      }
+      const server = app.listen(PORT, () => {
+        console.log(`PrivacyPrint API server running on port ${PORT}`)
+        console.log(`Health: http://localhost:${PORT}/api/health`)
+      })
+      module.exports = { app, server }
+    })
+    .catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
 } else {
   // When required by tests, export just the app
   module.exports = { app }

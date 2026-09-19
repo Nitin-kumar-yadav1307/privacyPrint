@@ -20,7 +20,7 @@ async function runTests() {
     copies: 2, pages: '1-2', color: 'bw', paperSize: 'A4',
     duplex: true, orientation: 'portrait', retentionMinutes: 10,
   }
-  const create = () => jobService.create({
+  const create = async () => jobService.create({
     tenantId: 'TENANT-001', printSettings: settings,
     document: { filename: 'synthetic.txt', originalName: 'synthetic.txt', path: path.join(uploadDir, 'synthetic.txt') },
   })
@@ -30,13 +30,13 @@ async function runTests() {
     copyDelayMs: 0,
   }
   try {
-    const job = create()
+    const job = await create()
     let copies = 0
     const completed = await simulateJob({
       ...options, jobId: job.jobId,
       wait: async () => {
         copies++
-        const current = jobService.getById(job.jobId)
+        const current = await jobService.getById(job.jobId)
         assert.equal(current.status, 'PRINTING')
         assert.equal(current.expiresAt, null, 'Retention must not start during printing')
       },
@@ -52,14 +52,14 @@ async function runTests() {
     console.log('✓ Copy progress, settings and post-print retention')
 
     await assert.rejects(simulateJob({ ...options, jobId: job.jobId }), /must be READY/)
-    const cancelled = create()
-    jobService.cancelJob(cancelled.jobId, cancelled.tenantId, 'Test cancellation')
+    const cancelled = await create()
+    await jobService.cancelJob(cancelled.jobId, cancelled.tenantId, 'Test cancellation')
     await assert.rejects(simulateJob({ ...options, jobId: cancelled.jobId }), /must be READY/)
     console.log('✓ Completed and cancelled jobs cannot be reprinted')
 
-    const other = create()
+    const other = await create()
     await assert.rejects(simulateJob({ ...options, tenantId: 'TENANT-002', jobId: other.jobId }), /404/)
-    assert.equal(jobService.getById(other.jobId).status, 'READY')
+    assert.equal((await jobService.getById(other.jobId)).status, 'READY')
     console.log('✓ Mismatched tenant refused without changing job')
 
     logs.length = 0
@@ -67,8 +67,8 @@ async function runTests() {
       ...options, jobId: other.jobId,
       wait: async () => { throw new Error('Simulated interruption') },
     }), /Simulated interruption/)
-    assert.equal(jobService.getById(other.jobId).status, 'PRINTING')
-    assert.equal(jobService.getById(other.jobId).expiresAt, null)
+    assert.equal((await jobService.getById(other.jobId)).status, 'PRINTING')
+    assert.equal((await jobService.getById(other.jobId)).expiresAt, null)
     assert.ok(!logs.includes('PRINT COMPLETED'))
     console.log('✓ Interrupted simulation does not report completion')
 
@@ -99,7 +99,7 @@ async function runTests() {
       assert.ok(finalJob.expiresAt)
       console.log('✓ HTTP upload → real CLI → HTTP retrieval confirms PRINTED')
     } finally {
-      fs.rmSync(jobService.getRaw(uploaded.jobId).document.path, { force: true })
+      fs.rmSync((await jobService.getRaw(uploaded.jobId)).document.path, { force: true })
     }
     console.log('All simulator checks passed')
   } finally {

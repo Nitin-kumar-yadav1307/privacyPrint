@@ -96,7 +96,7 @@ test('job creation rejects unknown and inactive shops without leaking an upload'
       return fetch(url, { method: 'POST', body: form })
     }
 
-    const baseline = jobService.allJobs().length
+    const baseline = (await jobService.allJobs()).length
     const unknown = await submit('TENANT-999')
     assert.equal(unknown.status, 404)
     assert.equal((await unknown.json()).message, 'Unknown print shop')
@@ -105,7 +105,7 @@ test('job creation rejects unknown and inactive shops without leaking an upload'
     assert.equal(inactive.status, 403)
     assert.equal((await inactive.json()).message, 'Print shop is not active')
 
-    assert.equal(jobService.allJobs().length, baseline, 'Rejected shops must not create jobs')
+    assert.equal((await jobService.allJobs()).length, baseline, 'Rejected shops must not create jobs')
     assert.deepEqual(fs.readdirSync(uploadDir), [], 'Rejected shops must leave no uploaded file')
     console.log('✓ Unknown shop → 404 and inactive shop → 403, both with no file and no job')
 
@@ -114,7 +114,7 @@ test('job creation rejects unknown and inactive shops without leaking an upload'
     assert.equal(accepted.status, 201)
     const job = (await accepted.json()).job
     assert.equal(job.tenantId, 'TENANT-001')
-    assert.equal(jobService.getRaw(job.jobId).tenantId, 'TENANT-001')
+    assert.equal((await jobService.getRaw(job.jobId)).tenantId, 'TENANT-001')
     assert.equal(fs.readdirSync(uploadDir).length, 1)
     console.log('✓ Valid shop creates a job bound to the normalized tenant id')
   } finally {
