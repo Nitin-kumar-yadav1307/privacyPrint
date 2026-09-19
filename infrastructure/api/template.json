@@ -99,9 +99,7 @@
         "AuthType": "NONE",
         "Cors": {
           "AllowOrigins": ["*"],
-          "AllowMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
-          "AllowHeaders": ["*"],
-          "MaxAge": 86400
+          "AllowMethods": ["*"]
         }
       }
     }
