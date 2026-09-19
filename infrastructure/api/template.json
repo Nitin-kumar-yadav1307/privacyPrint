@@ -95,12 +95,12 @@
     "ApiFunctionUrl": {
       "Type": "AWS::Lambda::Url",
       "Properties": {
-        "TargetFunctionArn": { "Fn::GetAtt": ["ApiFunction", "Arn"] },
+        "TargetFunctionArn": { "Ref": "ApiFunction" },
         "AuthType": "NONE",
         "Cors": {
           "AllowCredentials": false,
           "AllowHeaders": ["authorization", "content-type"],
-          "AllowMethods": ["*"],
+          "AllowMethods": ["GET", "POST", "OPTIONS"],
           "AllowOrigins": ["*"],
           "MaxAge": 86400
         }
