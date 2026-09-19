@@ -26,6 +26,44 @@ function discoverWindows(force = false) {
   return windowsCache.discovery
 }
 
+/** Discovery result for the platform's print system (never the PDF fallback). */
+function discoverFor(platform = process.platform, force = false) {
+  if (platform === 'win32') return discoverWindows(force)
+  return discoverCups(force)
+}
+
+/** Connection kinds a real document can come out of, best first. */
+const CONNECTION_PRIORITY = ['USB', 'LOCAL', 'NETWORK', 'UNKNOWN']
+
+/**
+ * Pure printer choice — deterministic and testable on any OS.
+ *
+ * Order: explicit override (PRINTER_NAME) → the OS default printer → a directly
+ * attached printer (USB beats network) → any remaining real printer. Virtual
+ * queues are skipped: nobody wants a shop job silently printed into a PDF file.
+ *
+ * @returns {{name: string|null, source: 'CONFIGURED'|'OS_DEFAULT'|'AUTO_DETECTED'|'NONE',
+ *            connection: string}}
+ */
+function selectPrinter({ configured, defaultPrinter, details }) {
+  const list = Array.isArray(details) ? details : []
+  const find = (name) => list.find((entry) => entry.name === name)
+
+  if (configured) {
+    const known = find(configured)
+    return { name: configured, source: 'CONFIGURED', connection: known ? known.connection : 'UNKNOWN' }
+  }
+  const defaultEntry = defaultPrinter ? find(defaultPrinter) : null
+  if (defaultPrinter && defaultEntry?.connection !== 'VIRTUAL') {
+    return { name: defaultPrinter, source: 'OS_DEFAULT', connection: defaultEntry ? defaultEntry.connection : 'UNKNOWN' }
+  }
+  for (const connection of CONNECTION_PRIORITY) {
+    const match = list.find((entry) => entry.connection === connection)
+    if (match) return { name: match.name, source: 'AUTO_DETECTED', connection: match.connection }
+  }
+  return { name: null, source: 'NONE', connection: 'UNKNOWN' }
+}
+
 /**
  * Pure mode selection — unit-testable on any OS.
  * On Windows the CUPS path cannot exist, so the Windows print tool is tried
@@ -47,43 +85,89 @@ function resolveMode() {
   })
 }
 
-/** Status exposed to the shop dashboard. */
+/**
+ * Status exposed to the shop dashboard: which printer the connector configured
+ * itself for, how it is attached, and why it was chosen.
+ */
 function status() {
   const mode = resolveMode()
-  if (mode === 'pdf') return { mode: 'pdf', state: 'PDF_FALLBACK', printers: [] }
-  if (mode === 'windows') {
-    const discovery = discoverWindows()
+  if (mode === 'pdf') {
     return {
-      mode: 'windows',
-      state: discovery.available ? 'CONNECTED' : discovery.reason,
-      printers: discovery.printers,
+      mode: 'pdf',
+      state: 'PDF_FALLBACK',
+      printer: { name: null, source: 'NONE', connection: 'UNKNOWN' },
+      printers: [],
     }
   }
-  const discovery = discoverCups()
+
+  const discovery = mode === 'windows' ? discoverWindows() : discoverCups()
+  const printer = selectPrinter({
+    configured: PRINTER_NAME,
+    defaultPrinter: discovery.defaultPrinter,
+    details: discovery.details,
+  })
+
+  // A configured printer that is no longer installed is reported honestly
+  // instead of silently printing somewhere else.
+  let state = discovery.available ? 'CONNECTED' : discovery.reason
+  if (printer.name && !discovery.printers.includes(printer.name)) state = 'PRINTER_NOT_FOUND'
+
   return {
-    mode: 'cups',
-    state: discovery.available ? 'CONNECTED' : discovery.reason,
+    mode,
+    state,
+    printer,
     printers: discovery.printers,
+    availablePrinters: (discovery.details || []).map((entry) => ({
+      name: entry.name,
+      connection: entry.connection,
+    })),
   }
 }
 
 /**
  * Print a downloaded document for a job.
+ *
+ * Self-healing: when no usable printer is known yet (the shop just plugged one
+ * in, or the previous one was switched off), discovery is forced once more
+ * before the attempt is failed.
+ *
  * @returns {{ok: boolean, mode: string, error?: string, outputPath?: string, manifestPath?: string}}
  */
-function printDocument(filePath, job) {
+async function printDocument(filePath, job) {
   const mode = resolveMode()
   if (mode === 'windows') {
-    const printer = PRINTER_NAME || discoverWindows().defaultPrinter || discoverWindows().printers[0]
-    if (!printer) return { ok: false, mode: 'WINDOWS', error: 'No Windows printer available' }
-    return windowsPrinter.printFile(WIN_PRINT_TOOL, printer, job.printSettings, filePath)
+    const args = { configured: PRINTER_NAME, details: discoverWindows().details }
+    let chosen = selectPrinter({ ...args, defaultPrinter: discoverWindows().defaultPrinter })
+    if (!chosen.name) {
+      const retry = discoverWindows(true)
+      chosen = selectPrinter({ configured: PRINTER_NAME, defaultPrinter: retry.defaultPrinter, details: retry.details })
+    }
+    if (!chosen.name) {
+      return {
+        ok: false,
+        mode: 'WINDOWS',
+        error: 'No printer detected — install the printer on this computer (USB or network), then retry',
+      }
+    }
+    return windowsPrinter.printFile(WIN_PRINT_TOOL, chosen.name, job.printSettings, filePath)
   }
   if (mode === 'cups') {
-    const printer = PRINTER_NAME || discoverCups().printers[0]
-    if (!printer) return { ok: false, mode: 'CUPS', error: 'No CUPS printer available' }
-    return cupsPrinter.printFile(filePath, job.printSettings, printer)
+    let discovery = discoverCups()
+    let chosen = selectPrinter({ configured: PRINTER_NAME, defaultPrinter: discovery.defaultPrinter, details: discovery.details })
+    if (!chosen.name) {
+      discovery = discoverCups(true)
+      chosen = selectPrinter({ configured: PRINTER_NAME, defaultPrinter: discovery.defaultPrinter, details: discovery.details })
+    }
+    if (!chosen.name) {
+      return {
+        ok: false,
+        mode: 'CUPS',
+        error: 'No printer detected — connect the printer over USB or Wi-Fi so CUPS can see it, then retry',
+      }
+    }
+    return cupsPrinter.printFile(filePath, job.printSettings, chosen.name)
   }
   return pdfFallback.printFile(filePath, job)
 }
 
-module.exports = { selectAutoMode, resolveMode, status, printDocument }
+module.exports = { selectAutoMode, selectPrinter, resolveMode, discoverFor, status, printDocument }

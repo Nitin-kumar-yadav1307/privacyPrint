@@ -115,10 +115,32 @@ function completePrint(req, res, next) {
   }
 }
 
-/** POST /connector/heartbeat — proves this shop's connector is alive. */
+/**
+ * Heartbeat metadata the connector may publish; anything else is ignored.
+ * The connector is authenticated, but this payload still comes from the network
+ * and is echoed to the shop dashboard, so it is whitelisted and bounded.
+ */
+const HEARTBEAT_META_FIELDS = ['mode', 'printerState', 'printerName', 'printerConnection', 'printerSource']
+const HEARTBEAT_META_MAX_LENGTH = 120
+
+function sanitizeHeartbeatMeta(body) {
+  const meta = {}
+  for (const field of HEARTBEAT_META_FIELDS) {
+    const value = body ? body[field] : undefined
+    if (typeof value === 'string' && value.trim()) {
+      meta[field] = value.trim().slice(0, HEARTBEAT_META_MAX_LENGTH)
+    }
+  }
+  return meta
+}
+
+/**
+ * POST /connector/heartbeat — proves this shop's connector is alive and
+ * publishes the printer it auto-detected, so the dashboard can show it.
+ */
 function heartbeat(req, res, next) {
   try {
-    connectorService.recordHeartbeat(req.authorizedTenantId)
+    connectorService.recordHeartbeat(req.authorizedTenantId, sanitizeHeartbeatMeta(req.body))
     res.json({ success: true })
   } catch (err) {
     next(err)

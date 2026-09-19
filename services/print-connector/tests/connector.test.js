@@ -173,3 +173,210 @@ test('print failure is reported as PRINT_FAILED, not success', async () => {
   await poller.tick()
   assert.deepEqual(completed, [{ jobId: 'JOB-FAIL', result: 'failed', reason: 'lp exited with status 1' }])
 })
+test('CUPS device URIs are classified so USB and wireless printers are recognized', () => {
+  const { classifyDevice } = require('../src/cupsPrinter')
+  assert.equal(classifyDevice('usb://HP/DeskJet%204900?serial=123'), 'USB')
+  assert.equal(classifyDevice('hp:/usb/DeskJet_4900?serial=123'), 'USB')
+  // IPP-over-USB (ipp-usb) exposes a USB printer on loopback IPP.
+  assert.equal(classifyDevice('ipp://localhost:60000/ipp/print'), 'USB')
+  assert.equal(classifyDevice('ipps://127.0.0.1:60000/ipp/print'), 'USB')
+  assert.equal(classifyDevice('ipp://192.168.1.42/ipp/print'), 'NETWORK')
+  assert.equal(classifyDevice('dnssd://Office%20Printer._ipp._tcp.local/'), 'NETWORK')
+  assert.equal(classifyDevice('socket://printer.local:9100'), 'NETWORK')
+  assert.equal(classifyDevice('cups-pdf:/'), 'VIRTUAL')
+  assert.equal(classifyDevice('parallel:/dev/lp0'), 'LOCAL')
+  assert.equal(classifyDevice(''), 'UNKNOWN')
+})
+
+test('CUPS discovery output yields printer queues, the system default and device kinds', () => {
+  const { parsePrinters, parseDevices, classifyDevice } = require('../src/cupsPrinter')
+  const listing = [
+    'printer HP_DeskJet_4900_series_2849E5_USB is idle.  enabled since Sat 19 Sep 2026',
+    'printer Office_Laser is idle.  enabled since Sat 19 Sep 2026',
+    'system default destination: Office_Laser',
+  ].join('\n')
+  const { printers, defaultPrinter } = parsePrinters(listing)
+  assert.deepEqual(printers, ['HP_DeskJet_4900_series_2849E5_USB', 'Office_Laser'])
+  assert.equal(defaultPrinter, 'Office_Laser')
+
+  // No default configured is the common case for a freshly attached printer.
+  assert.equal(parsePrinters('printer Only_One is idle.\nno system default destination').defaultPrinter, null)
+
+  const devices = parseDevices([
+    'device for HP_DeskJet_4900_series_2849E5_USB: ipp://localhost:60000/ipp/print',
+    'device for Office_Laser: ipp://192.168.1.42/ipp/print',
+  ].join('\n'))
+  assert.equal(classifyDevice(devices.HP_DeskJet_4900_series_2849E5_USB), 'USB')
+  assert.equal(classifyDevice(devices.Office_Laser), 'NETWORK')
+})
+
+test('printer selection prefers override, then OS default, then USB, and skips virtual queues', () => {
+  const { selectPrinter } = require('../src/printerService')
+  const details = [
+    { name: 'Print_to_PDF', connection: 'VIRTUAL' },
+    { name: 'Office_Laser', connection: 'NETWORK' },
+    { name: 'DeskJet_USB', connection: 'USB' },
+  ]
+
+  // Explicit shop override always wins.
+  assert.equal(selectPrinter({ configured: 'Office_Laser', defaultPrinter: null, details }).name, 'Office_Laser')
+  assert.equal(selectPrinter({ configured: 'Office_Laser', defaultPrinter: null, details }).source, 'CONFIGURED')
+
+  // The OS default is respected next.
+  const byDefault = selectPrinter({ configured: '', defaultPrinter: 'Office_Laser', details })
+  assert.deepEqual(byDefault, { name: 'Office_Laser', source: 'OS_DEFAULT', connection: 'NETWORK' })
+
+  // With no default, a directly attached printer beats a network one.
+  const auto = selectPrinter({ configured: '', defaultPrinter: null, details })
+  assert.deepEqual(auto, { name: 'DeskJet_USB', source: 'AUTO_DETECTED', connection: 'USB' })
+
+  // A virtual default is never used, even if the OS sets it.
+  const virtualDefault = selectPrinter({ configured: '', defaultPrinter: 'Print_to_PDF', details })
+  assert.equal(virtualDefault.name, 'DeskJet_USB')
+
+  // Nothing usable → no printer, so the connector reports a failure instead of
+  // silently printing into a file.
+  const none = selectPrinter({ configured: '', defaultPrinter: null, details: [{ name: 'Print_to_PDF', connection: 'VIRTUAL' }] })
+  assert.deepEqual(none, { name: null, source: 'NONE', connection: 'UNKNOWN' })
+})
+
+test('Windows printer ports are classified so USB and network printers are recognized', () => {
+  const { classifyPort, parsePrinters } = require('../src/windowsPrinter')
+  assert.equal(classifyPort('USB001'), 'USB')
+  assert.equal(classifyPort('WSD-abc123'), 'NETWORK')
+  assert.equal(classifyPort('IP_192.168.1.42'), 'NETWORK')
+  assert.equal(classifyPort('PORTPROMPT:'), 'VIRTUAL')
+  assert.equal(classifyPort(''), 'UNKNOWN')
+
+  const parsed = parsePrinters('HP LaserJet|True|USB001\nMicrosoft Print to PDF|False|PORTPROMPT:\n')
+  assert.deepEqual(parsed.printers, ['HP LaserJet', 'Microsoft Print to PDF'])
+  assert.equal(parsed.defaultPrinter, 'HP LaserJet')
+  assert.equal(parsed.details[0].connection, 'USB')
+  assert.equal(parsed.details[1].connection, 'VIRTUAL')
+})
+
+
+test('connector API client signs in with shop credentials and caches the token', async () => {
+  const originalFetch = global.fetch
+  delete require.cache[require.resolve('../src/apiClient')]
+  delete require.cache[require.resolve('../src/config')]
+
+  process.env.API_BASE_URL = 'http://example.test:3001'
+  process.env.SHOP_TOKEN = ''
+
+  const calls = []
+  global.fetch = async (url, options = {}) => {
+    calls.push({ url, options })
+    return {
+      ok: true,
+      json: async () => ({ token: 'token-123', tenant: { code: 'SHOP-MUM-001' } }),
+    }
+  }
+
+  try {
+    const apiClient = require('../src/apiClient')
+    const session = await apiClient.loginShop({ tenantId: 'TENANT-001', passcode: 'privacyprint-demo' })
+
+    assert.equal(session.token, 'token-123')
+    assert.equal(apiClient.getShopToken(), 'token-123')
+    assert.equal(calls[0].url, 'http://example.test:3001/api/auth/shop/login')
+    assert.deepEqual(JSON.parse(calls[0].options.body), {
+      tenantId: 'TENANT-001',
+      passcode: 'privacyprint-demo',
+    })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('connector startup retries until the API becomes available', async () => {
+  const originalFetch = global.fetch
+  delete require.cache[require.resolve('../src/apiClient')]
+  delete require.cache[require.resolve('../src/config')]
+
+  process.env.API_BASE_URL = 'http://example.test:3001'
+  process.env.SHOP_TOKEN = ''
+  process.env.SHOP_TENANT_ID = 'TENANT-002'
+  process.env.SHOP_PASSCODE = 'privacyprint-demo'
+  process.env.STARTUP_RETRY_MS = '1'
+  process.env.STARTUP_RETRY_LIMIT = '3'
+
+  let callCount = 0
+  global.fetch = async (url) => {
+    callCount += 1
+    if (callCount === 1) throw new Error('fetch failed')
+    if (String(url).endsWith('/api/health')) {
+      return { ok: true, json: async () => ({ status: 'ok' }) }
+    }
+    if (String(url).endsWith('/api/auth/shop/login')) {
+      return { ok: true, json: async () => ({ token: 'token-abc', tenant: { code: 'SHOP-BLR-001' } }) }
+    }
+    throw new Error(`Unexpected fetch ${url}`)
+  }
+
+  try {
+    const { bootstrapAuth } = require('../src/index')
+    await bootstrapAuth()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const apiClient = require('../src/apiClient')
+
+    assert.equal(apiClient.getShopToken(), 'token-abc')
+    assert.ok(callCount >= 3)
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('CUPS request ids are read from lp output', () => {
+  const { parseRequestId } = require('../src/cupsPrinter')
+  assert.equal(parseRequestId('request id is HP_DeskJet-42 (1 file(s))\n'), 'HP_DeskJet-42')
+  assert.equal(parseRequestId('lp: Error - no default destination available'), null)
+  assert.equal(parseRequestId(''), null)
+})
+
+test('a CUPS filter failure is reported as failed instead of printed', async () => {
+  const { printFile, readJobBlock, jobErrorMessage } = require('../src/cupsPrinter')
+
+  // The exact block CUPS produced for a document that was not a real PDF.
+  const failingQueue = [
+    'HP_DeskJet-42 nitin             1024   Sat 19 Sep 2026 01:56:46 PM IST',
+    '\tStatus: cfFilterPDFToPDF: load_file failed: temp file: unable to find trailer dictionary while recovering damaged file',
+    '\tAlerts: job-completed-with-errors',
+    '\tqueued for HP_DeskJet',
+  ].join('\n')
+
+  const block = readJobBlock(failingQueue, 'HP_DeskJet-42')
+  assert.match(jobErrorMessage(block), /load_file failed/)
+  assert.equal(readJobBlock(failingQueue, 'Other-9'), null)
+  assert.equal(jobErrorMessage(readJobBlock('HP_DeskJet-42 nitin 1024\n\tqueued for HP_DeskJet', 'HP_DeskJet-42')), null)
+
+  const runner = (command) => (command === 'lp'
+    ? { status: 0, stdout: 'request id is HP_DeskJet-42 (1 file(s))\n' }
+    : { status: 0, stdout: failingQueue })
+
+  const result = await printFile('/tmp/doc.pdf', SETTINGS, 'HP_DeskJet', { runner, sleep: async () => {}, verifyAttempts: 3 })
+  assert.equal(result.ok, false)
+  assert.match(result.error, /CUPS reported: .*load_file failed/)
+})
+
+test('a CUPS job that leaves the queue counts as printed', async () => {
+  const { printFile } = require('../src/cupsPrinter')
+  const runner = (command) => (command === 'lp'
+    ? { status: 0, stdout: 'request id is HP_DeskJet-43 (1 file(s))\n' }
+    : { status: 0, stdout: '' })
+
+  const result = await printFile('/tmp/doc.pdf', SETTINGS, 'HP_DeskJet', { runner, sleep: async () => {} })
+  assert.deepEqual(result, { ok: true, mode: 'CUPS', verified: true })
+})
+
+test('a job still queued after the observation window is accepted, not failed', async () => {
+  const { printFile } = require('../src/cupsPrinter')
+  const runner = (command) => (command === 'lp'
+    ? { status: 0, stdout: 'request id is HP_DeskJet-44 (1 file(s))\n' }
+    : { status: 0, stdout: 'HP_DeskJet-44 nitin 4096 Sat\n\tqueued for HP_DeskJet\n' })
+
+  const result = await printFile('/tmp/doc.pdf', SETTINGS, 'HP_DeskJet', {
+    runner, sleep: async () => {}, verifyAttempts: 2,
+  })
+  assert.deepEqual(result, { ok: true, mode: 'CUPS', verified: false })
+})

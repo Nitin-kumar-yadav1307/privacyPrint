@@ -216,8 +216,11 @@ export default function ShopDashboardPage() {
             }`}>
               {connector?.online ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
               <span>Connector {connector?.online ? 'Online' : 'Offline'}</span>
-              {connector?.online && connector.printerState && (
-                <span className="opacity-80">· {connector.printerState}</span>
+              {connector?.online && (connector.printerName || connector.printerState) && (
+                <span className="opacity-80">
+                  · {connector.printerName || connector.printerState}
+                  {connector.printerConnection ? ` (${connector.printerConnection})` : ''}
+                </span>
               )}
             </div>
 

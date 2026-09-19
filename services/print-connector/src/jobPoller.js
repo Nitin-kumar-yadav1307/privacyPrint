@@ -61,7 +61,7 @@ class JobPoller {
       this.logger.info(`Job ${job.jobId}: downloading document`)
       await this.api.downloadDocument(job, tmpPath)
 
-      const result = this.printer.printDocument(tmpPath, job)
+      const result = await this.printer.printDocument(tmpPath, job)
       if (!result.ok) {
         this.logger.error(`Job ${job.jobId}: print failed — ${result.error}`)
         await this.api.reportPrintResult(job.jobId, { result: 'failed', reason: result.error })

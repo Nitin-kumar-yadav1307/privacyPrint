@@ -46,17 +46,36 @@ function buildPrintArgs(printTool, printerName, settings, filePath) {
   ]
 }
 
-/** Parse `Get-CimInstance Win32_Printer` output lines of "Name|IsDefault". */
+/**
+ * Connection kind of a Windows printer port — the equivalent of the CUPS device
+ * URI, so a shop's printer is recognized whether it is USB or networked.
+ * Virtual queues (Microsoft Print to PDF, Fax) are never auto-selected.
+ */
+function classifyPort(portName) {
+  const value = String(portName || '').toUpperCase()
+  if (!value) return 'UNKNOWN'
+  if (/^USB\d*/.test(value)) return 'USB'
+  if (/^(PORTPROMPT|FILE|NUL|SHRFAX|FAX)/.test(value)) return 'VIRTUAL'
+  if (/^(WSD|IP_|TCPIP|LPR|\\\\|\d{1,3}(\.\d{1,3}){3})/.test(value)) return 'NETWORK'
+  return 'UNKNOWN'
+}
+
+/**
+ * Parse `Get-CimInstance Win32_Printer` output lines of
+ * "Name|IsDefault|PortName" (the port field is optional).
+ */
 function parsePrinters(output) {
   const printers = []
+  const details = []
   let defaultPrinter = null
   for (const line of String(output || '').split('\n')) {
-    const [name, isDefault] = line.trim().split('|')
+    const [name, isDefault, portName] = line.trim().split('|')
     if (!name) continue
     printers.push(name)
+    details.push({ name, deviceUri: portName || null, connection: classifyPort(portName) })
     if (String(isDefault).toLowerCase() === 'true') defaultPrinter = name
   }
-  return { printers, defaultPrinter }
+  return { printers, defaultPrinter, details }
 }
 
 /** Detect printers installed on the Windows machine (PowerShell, no WMI shell strings). */
@@ -65,21 +84,22 @@ function discoverPrinters() {
     const result = spawnSync(
       'powershell',
       ['-NoProfile', '-NonInteractive', '-Command',
-        'Get-CimInstance Win32_Printer | ForEach-Object { "$($_.Name)|$($_.Default)" }'],
+        'Get-CimInstance Win32_Printer | ForEach-Object { "$($_.Name)|$($_.Default)|$($_.PortName)" }'],
       { encoding: 'utf8', timeout: 8000 },
     )
     if (result.error || result.status !== 0) {
-      return { available: false, printers: [], defaultPrinter: null, reason: 'DISCOVERY_UNAVAILABLE' }
+      return { available: false, printers: [], defaultPrinter: null, details: [], reason: 'DISCOVERY_UNAVAILABLE' }
     }
-    const { printers, defaultPrinter } = parsePrinters(result.stdout)
+    const { printers, defaultPrinter, details } = parsePrinters(result.stdout)
     return {
       available: printers.length > 0,
       printers,
       defaultPrinter,
+      details,
       reason: printers.length > 0 ? null : 'NO_PRINTER',
     }
   } catch {
-    return { available: false, printers: [], defaultPrinter: null, reason: 'DISCOVERY_UNAVAILABLE' }
+    return { available: false, printers: [], defaultPrinter: null, details: [], reason: 'DISCOVERY_UNAVAILABLE' }
   }
 }
 
@@ -98,4 +118,4 @@ function printFile(printTool, printerName, settings, filePath) {
   return { ok: true, mode: 'WINDOWS' }
 }
 
-module.exports = { buildPrintSettings, buildPrintArgs, parsePrinters, discoverPrinters, printFile }
+module.exports = { buildPrintSettings, buildPrintArgs, parsePrinters, classifyPort, discoverPrinters, printFile }

@@ -5,8 +5,18 @@
  */
 const { test, before, after } = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
 
+// Hermetic store: jobs and uploads must not leak in from the developer's real
+// data directory — a leftover PRINTING job would break the empty-queue assertion.
+const testRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'privacyprint-connector-'))
 process.env.PORT = '3993'
+process.env.UPLOAD_DIR = path.join(testRoot, 'uploads')
+process.env.DATA_DIR = path.join(testRoot, 'data')
+process.on('exit', () => fs.rmSync(testRoot, { recursive: true, force: true }))
+
 const { app } = require('../src/server')
 const tenantService = require('../src/services/tenantService')
 const { SHOP_DEMO_PASSCODE } = require('../src/config')
@@ -161,4 +171,43 @@ test('a connector for one shop cannot download or complete another shop\'s job',
   // Tampered token is rejected outright.
   res = await fetch(`${base}/api/connector/jobs`, { headers: authed(`${tokenB.slice(0, -2)}xx`) })
   assert.equal(res.status, 401)
+})
+
+test('heartbeat publishes the auto-detected printer to the dashboard, whitelisted and bounded', async () => {
+  const token = await login('TENANT-001')
+
+  const res = await fetch(`${base}/api/connector/heartbeat`, {
+    method: 'POST',
+    headers: { ...authed(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode: 'cups',
+      printerState: 'CONNECTED',
+      printerName: 'HP_DeskJet_4900_series_2849E5_USB',
+      printerConnection: 'USB',
+      printerSource: 'AUTO_DETECTED',
+      unknownField: 'must be ignored',
+      printerName2: 'x'.repeat(400),
+    }),
+  })
+  assert.equal(res.status, 200)
+
+  const statusRes = await fetch(`${base}/api/connector/status?tenantId=TENANT-001`)
+  assert.equal(statusRes.status, 200)
+  const { connector } = await statusRes.json()
+  assert.equal(connector.online, true)
+  assert.equal(connector.printerName, 'HP_DeskJet_4900_series_2849E5_USB')
+  assert.equal(connector.printerConnection, 'USB')
+  assert.equal(connector.printerSource, 'AUTO_DETECTED')
+  assert.equal(connector.printerState, 'CONNECTED')
+  assert.equal(connector.unknownField, undefined, 'unknown heartbeat fields must not be stored')
+
+  // Oversized values are truncated rather than stored unbounded.
+  const long = await fetch(`${base}/api/connector/heartbeat`, {
+    method: 'POST',
+    headers: { ...authed(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ printerName: 'y'.repeat(400) }),
+  })
+  assert.equal(long.status, 200)
+  const after = await (await fetch(`${base}/api/connector/status?tenantId=TENANT-001`)).json()
+  assert.equal(after.connector.printerName.length, 120)
 })
