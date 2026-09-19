@@ -101,7 +101,7 @@
           "AllowCredentials": false,
           "AllowHeaders": ["authorization", "content-type"],
           "AllowMethods": ["GET", "POST", "OPTIONS"],
-          "AllowOrigins": [{ "Fn::Split": [",", { "Ref": "CorsOrigin" }] }],
+          "AllowOrigins": ["*"],
           "MaxAge": 86400
         }
       }
