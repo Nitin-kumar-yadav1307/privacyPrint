@@ -78,6 +78,7 @@ run aws cloudformation deploy \
   --stack-name privacyprint-expiry-worker \
   --parameter-overrides DocumentBucketName="$DOCUMENT_BUCKET" JobsTableName="privacyprint-jobs" \
   --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
+  --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
 EXPIRY_ARN="$(aws cloudformation describe-stacks --stack-name privacyprint-expiry-worker \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`ExpireJobsFunctionArn`].OutputValue' --output text $NOCLI)"
 
