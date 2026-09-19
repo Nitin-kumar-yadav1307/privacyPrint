@@ -14,10 +14,13 @@ const { PORT, UPLOAD_DIR } = require('./config')
 
 function isAllowedOrigin(origin) {
   if (!origin) return true
-  const allowedOrigins = new Set([
-    process.env.CORS_ORIGIN || 'http://localhost:5173',
-    'http://localhost:5174',
-  ])
+  const allowedOrigins = new Set(
+    (process.env.CORS_ORIGIN || 'http://localhost:5173')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .concat(['http://localhost:5174']),
+  )
   if (allowedOrigins.has(origin)) return true
   if (process.env.NODE_ENV !== 'production') {
     return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)

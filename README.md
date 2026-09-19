@@ -92,6 +92,30 @@ The next production steps, aligned with the plan, are:
 7. CloudWatch logs and monitoring
 8. Tenant-isolated backend enforcement independent of frontend filtering
 
+## AWS deployment (hackathon "Deployed, with a URL" track)
+
+The API, expiry worker and customer web app deploy to AWS; the print connector
+stays on the shop's own computer by design.
+
+```sh
+aws configure                      # your credentials; never committed
+REGION=ap-south-1 ./infrastructure/deploy.sh   # add --dry-run to preview
+```
+
+The script deploys, in order: the private S3 document bucket (SSE-S3, no
+public access, TLS-only), the DynamoDB job/tenant tables, the expiry-worker
+Lambda (packaged from `services/expiry-worker`), the EventBridge `rate(5
+minutes)` schedule, the API as a Lambda function with a public Function URL
+(`infrastructure/api/`), and the customer web app to S3 static hosting —
+printing the two URLs at the end.
+
+With `DOCUMENT_BUCKET` set, documents are stored in the private S3 bucket
+instead of local disk: upload happens only after content validation, deletion
+precedes every EXPIRED/CANCELLED transition, and the shop connector streams
+the object through the tenant-authorized `/connector/jobs/:id/document`
+endpoint. Set the connector's `API_BASE_URL` to the API Function URL to
+connect a shop. Tear the stacks down when the hackathon ends to stop charges.
+
 ## Hardening checklist
 
 - Reject client-supplied tenantId when a verified session exists

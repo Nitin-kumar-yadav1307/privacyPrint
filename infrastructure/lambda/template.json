@@ -1,6 +1,17 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "PrivacyPrint expiry and cleanup worker",
+  "Parameters": {
+    "DocumentBucketName": {
+      "Type": "String",
+      "Description": "Name of the private document bucket (from the storage stack)"
+    },
+    "JobsTableName": {
+      "Type": "String",
+      "Default": "privacyprint-jobs",
+      "Description": "DynamoDB jobs table name (from the database stack)"
+    }
+  },
   "Resources": {
     "ExpireJobsFunctionRole": {
       "Type": "AWS::IAM::Role",
@@ -62,16 +73,14 @@
         "Runtime": "nodejs22.x",
         "Handler": "index.handler",
         "MemorySize": 256,
-        "Timeout": 30,
+        "Timeout": 60,
         "Role": { "Fn::GetAtt": ["ExpireJobsFunctionRole", "Arn"] },
-        "Code": {
-          "ZipFile": "exports.handler = async (event) => { const jobs = Array.isArray(event && event.Records) ? event.Records : []; return { statusCode: 200, body: JSON.stringify({ processed: jobs.length }) }; };"
-        },
+        "Code": "../expiry-worker/dist/lambda.zip",
         "Environment": {
           "Variables": {
-            "JOBS_TABLE": "privacyprint-jobs",
+            "JOBS_TABLE": { "Ref": "JobsTableName" },
             "TENANTS_TABLE": "privacyprint-tenants",
-            "DOCUMENT_BUCKET": "privacyprint-documents"
+            "DOCUMENT_BUCKET": { "Ref": "DocumentBucketName" }
           }
         }
       }

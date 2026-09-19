@@ -21,8 +21,11 @@ function createJob(data) {
     document: {
       filename: data.document.filename,
       originalName: data.document.originalName,
-      // Document stored path is internal only, never exposed to clients
-      path: data.document.path,
+      // Storage fields depend on the provider: local keeps `path`, S3 keeps
+      // `bucket` + `key`. Exactly one of the two must be present.
+      ...(data.document.storage === 's3'
+        ? { storage: 's3', bucket: data.document.bucket, key: data.document.key }
+        : { path: data.document.path }),
     },
     printSettings: {
       copies: data.printSettings.copies || 1,

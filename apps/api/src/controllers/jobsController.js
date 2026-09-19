@@ -6,8 +6,21 @@ const { createDocumentUploader } = require('../services/documentUploader')
 const tenantService = require('../services/tenantService')
 const { TENANT_STATUS } = require('../models/Tenant')
 
-// Keep local storage until remote deletion and recovery are integrated.
-const uploadDocument = createDocumentUploader()
+const { isS3Configured, getBucket, getS3Uploader } = require('../services/s3Client')
+
+/**
+ * Storage provider selection. With DOCUMENT_BUCKET set (the AWS deployment)
+ * documents are uploaded to the private S3 bucket; otherwise the local
+ * upload directory is used exactly as before.
+ */
+function getUploader() {
+  if (!isS3Configured()) return createDocumentUploader()
+  return createDocumentUploader({
+    provider: 's3',
+    bucket: getBucket(),
+    client: { putObject: getS3Uploader() },
+  })
+}
 
 /**
  * Tenant this request may act on.
@@ -101,7 +114,7 @@ async function createJob(req, res, next) {
     }
 
     const documentInfo = {
-      ...await uploadDocument(req.file, tenant.id),
+      ...await getUploader()(req.file, tenant.id),
       mimetype: req.file.mimetype,
       size: req.file.size,
     }
@@ -122,7 +135,7 @@ async function createJob(req, res, next) {
     // Once a job owns the file, only its lifecycle may remove it.
     if (req.file && !jobStored) {
       try {
-        removeDocument(req.file)
+        await removeDocument(req.file)
       } catch (cleanupError) {
         return next(cleanupError)
       }
@@ -402,7 +415,7 @@ function autoComplete(req, res, next) {
  * Customer or shop cancels a job that hasn't started printing.
  * Optional JSON body: { "reason": "why" }
  */
-function cancelJob(req, res, next) {
+async function cancelJob(req, res, next) {
   try {
     const { jobId } = req.params
     const tenantId = requestTenantId(req)
@@ -415,7 +428,7 @@ function cancelJob(req, res, next) {
     }
 
     const reason = req.body && typeof req.body.reason === 'string' ? req.body.reason : undefined
-    const job = jobService.cancelJob(jobId, tenantId, reason)
+    const job = await jobService.cancelJob(jobId, tenantId, reason)
 
     if (!job) {
       // Return 404 to avoid leaking job existence across tenants

@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3001
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(__dirname, '../uploads'))
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, '../data'))
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
+const DOCUMENT_BUCKET = process.env.DOCUMENT_BUCKET || ''
 const NODE_ENV = process.env.NODE_ENV || 'development'
 
 /**
@@ -47,6 +48,7 @@ module.exports = {
   UPLOAD_DIR,
   DATA_DIR,
   CORS_ORIGIN,
+  DOCUMENT_BUCKET,
   NODE_ENV,
   AUTH_SECRET,
   AUTH_SECRET_SOURCE,

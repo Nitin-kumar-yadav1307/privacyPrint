@@ -13,9 +13,14 @@ function openJobStore(directory) {
     records = saved.jobs
     const ids = new Set()
     for (const job of records) {
+      const isRemote = job.document?.storage === 's3'
+      const hasLocalPath = typeof job.document?.path === 'string' && job.document.path
+      const hasRemoteKey = typeof job.document?.key === 'string' && job.document.key &&
+        typeof job.document?.bucket === 'string' && job.document.bucket
       if (!job || typeof job.jobId !== 'string' || ids.has(job.jobId) ||
           typeof job.tenantId !== 'string' || !job.document ||
-          typeof job.document.path !== 'string' || !job.printSettings ||
+          (!isRemote && !hasLocalPath) || (isRemote && !hasRemoteKey) ||
+          typeof job.printSettings !== 'object' || !job.printSettings ||
           !Object.values(JOB_STATUS).includes(job.status) ||
           !Number.isFinite(Date.parse(job.createdAt)) ||
           (job.status === JOB_STATUS.PRINTED && !Number.isFinite(Date.parse(job.expiresAt)))) {

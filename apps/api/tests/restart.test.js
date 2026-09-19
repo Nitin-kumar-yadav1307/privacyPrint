@@ -10,7 +10,9 @@ const data = path.join(root, 'data')
 fs.mkdirSync(uploads)
 const env = { ...process.env, UPLOAD_DIR: uploads, DATA_DIR: data }
 function child(code, success = true) {
-  const result = spawnSync(process.execPath, ['-e', code], {
+  // Top-level await is not allowed alongside require() in `node -e`, so every
+  // child script is wrapped in an async IIFE.
+  const result = spawnSync(process.execPath, ['-e', `(async () => { ${code} })().catch((error) => { console.error(error); process.exit(1) })`], {
     cwd: path.join(__dirname, '..'), env, encoding: 'utf8', timeout: 10000,
   })
   assert.ifError(result.error)
@@ -19,7 +21,7 @@ function child(code, success = true) {
   return result
 }
 const load = "const jobs = require('./src/services/jobService');"
-const recover = "require('./src/services/recoveryService').recoverJobs(Date.now(), () => {}, () => {});"
+const recover = "await require('./src/services/recoveryService').recoverJobs(Date.now(), () => {}, () => {});"
 const snapshot = path.join(data, 'jobs.json')
 try {
   child(`
@@ -31,7 +33,7 @@ try {
         document: { filename: name + '.txt', originalName: name, path: filePath } });
       if (['printed', 'printing'].includes(name)) jobs.startPrinting(job.jobId, 'SHOP-A');
       if (name === 'printed') jobs.markPrinted(job.jobId, 'SHOP-A');
-      if (name === 'cancelled') jobs.cancelJob(job.jobId, 'SHOP-A', 'Synthetic cancel');
+      if (name === 'cancelled') await jobs.cancelJob(job.jobId, 'SHOP-A', 'Synthetic cancel');
     }
   `)
   const saved = JSON.parse(fs.readFileSync(snapshot))

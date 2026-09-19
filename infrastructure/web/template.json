@@ -1,0 +1,55 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "PrivacyPrint customer web app static hosting (hackathon demo)",
+  "Resources": {
+    "WebBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Delete",
+      "UpdateReplacePolicy": "Delete",
+      "Properties": {
+        "WebsiteConfiguration": {
+          "IndexDocument": "index.html",
+          "ErrorDocument": "index.html"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true
+        },
+        "Tags": [{ "Key": "Project", "Value": "PrivacyPrint" }]
+      }
+    },
+    "WebBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "WebBucket" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "PublicReadWebsiteContent",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": { "Fn::Sub": "${WebBucket.Arn}/*" }
+            },
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                { "Fn::GetAtt": ["WebBucket", "Arn"] },
+                { "Fn::Sub": "${WebBucket.Arn}/*" }
+              ],
+              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "WebsiteURL": { "Value": { "Fn::GetAtt": ["WebBucket", "WebsiteURL"] } },
+    "WebBucketName": { "Value": { "Ref": "WebBucket" } }
+  }
+}

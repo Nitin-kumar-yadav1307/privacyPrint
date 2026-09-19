@@ -133,10 +133,13 @@ function markPrinted(jobId, tenantId) {
 
 /**
  * Expire a job (remove its temporary document reference and mark EXPIRED).
+ * The document is deleted BEFORE the status transition, so a failure leaves
+ * the job PRINTED and the next tick retries — an EXPIRED job whose document
+ * still exists is impossible by construction.
  * @param {string} jobId
- * @returns {Object|null} Updated public job or null if not found
+ * @returns {Promise<Object|null>} Updated public job or null if not found
  */
-function expireJob(jobId) {
+async function expireJob(jobId) {
   const job = jobs.get(jobId)
   if (!job) {
     return null
@@ -144,7 +147,7 @@ function expireJob(jobId) {
   if (job.status !== JOB_STATUS.PRINTED) {
     return toPublic(job)
   }
-  removeDocument(job.document)
+  await removeDocument(job.document)
   return update(job, markExpired)
 }
 
@@ -153,9 +156,9 @@ function expireJob(jobId) {
  * @param {string} jobId
  * @param {string} tenantId
  * @param {string} reason
- * @returns {Object|null} Updated public job or null if unauthorized/not found
+ * @returns {Promise<Object|null>} Updated public job or null if unauthorized/not found
  */
-function cancelJob(jobId, tenantId, reason) {
+async function cancelJob(jobId, tenantId, reason) {
   const job = jobs.get(jobId)
   if (!job || job.tenantId !== tenantId) {
     return null
@@ -164,7 +167,7 @@ function cancelJob(jobId, tenantId, reason) {
   if (job.status !== JOB_STATUS.CREATED && job.status !== JOB_STATUS.READY) {
     return toPublic(job)
   }
-  removeDocument(job.document)
+  await removeDocument(job.document)
   return update(job, (record) => markCancelled(record, reason))
 }
 

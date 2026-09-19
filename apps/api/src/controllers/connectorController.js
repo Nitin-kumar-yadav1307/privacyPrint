@@ -3,6 +3,7 @@ const fs = require('fs')
 const { UPLOAD_DIR } = require('../config')
 const jobService = require('../services/jobService')
 const connectorService = require('../services/connectorService')
+const { getS3Getter } = require('../services/s3Client')
 
 /**
  * GET /connector/jobs
@@ -23,47 +24,76 @@ function listJobs(req, res, next) {
  * Only the job's own tenant, and only while PRINTING, may fetch the bytes.
  */
 function getDocument(req, res, next) {
-  try {
-    const { jobId } = req.params
-    const tenantId = req.authorizedTenantId
+  getDocumentAsync(req, res).catch(next)
+}
 
-    const job = jobService.getByIdAndTenant(jobId, tenantId)
-    if (!job) {
-      // 404, not 403 — never reveal other tenants' job ids.
-      return res.status(404).json({
-        error: 'Not found',
-        message: 'Job not found or you do not have access to this job',
-      })
-    }
-    if (job.status !== 'PRINTING') {
-      return res.status(409).json({
-        error: 'Conflict',
-        message: 'Document is only available while the job is PRINTING',
-      })
-    }
+async function getDocumentAsync(req, res) {
+  const { jobId } = req.params
+  const tenantId = req.authorizedTenantId
 
-    const raw = jobService.getRaw(jobId)
-    const docPath = raw?.document?.path
-    if (typeof docPath !== 'string' || !docPath) {
-      return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
-    }
-
-    // Same containment rule as removeDocument: only direct children of the
-    // private upload directory may be served.
-    const resolved = path.resolve(docPath)
-    if (path.dirname(resolved) !== UPLOAD_DIR || path.basename(resolved) === '.gitkeep') {
-      return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
-    }
-    if (!fs.existsSync(resolved)) {
-      return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
-    }
-
-    res.download(resolved, raw.document.originalName || 'document', (err) => {
-      if (err && !res.headersSent) next(err)
+  const job = jobService.getByIdAndTenant(jobId, tenantId)
+  if (!job) {
+    // 404, not 403 — never reveal other tenants' job ids.
+    return res.status(404).json({
+      error: 'Not found',
+      message: 'Job not found or you do not have access to this job',
     })
-  } catch (err) {
-    next(err)
   }
+  if (job.status !== 'PRINTING') {
+    return res.status(409).json({
+      error: 'Conflict',
+      message: 'Document is only available while the job is PRINTING',
+    })
+  }
+
+  const raw = jobService.getRaw(jobId)
+
+  // Remote storage: stream the private S3 object straight to the connector.
+  // The exact recorded bucket/key is used — the tenant-authorized jobId has
+  // already been resolved above, and keys are opaque UUIDs (no tenant data).
+  if (raw?.document?.storage === 's3') {
+    const { bucket, key } = raw.document
+    if (typeof bucket !== 'string' || !bucket || typeof key !== 'string' || !key) {
+      return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
+    }
+    const getObject = getS3Getter()
+    if (!getObject) {
+      return res.status(500).json({ error: 'Server error', message: 'Remote document storage is not configured' })
+    }
+    let object
+    try {
+      object = await getObject({ Bucket: bucket, Key: key })
+    } catch {
+      return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
+    }
+    res.setHeader('Content-Type', object.ContentType || 'application/octet-stream')
+    if (object.ContentLength) res.setHeader('Content-Length', String(object.ContentLength))
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${(raw.document.originalName || 'document').replace(/["\\\r\n]/g, '_')}"`,
+    )
+    object.Body.pipe(res)
+    return
+  }
+
+  const docPath = raw?.document?.path
+  if (typeof docPath !== 'string' || !docPath) {
+    return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
+  }
+
+  // Same containment rule as removeDocument: only direct children of the
+  // private upload directory may be served.
+  const resolved = path.resolve(docPath)
+  if (path.dirname(resolved) !== UPLOAD_DIR || path.basename(resolved) === '.gitkeep') {
+    return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
+  }
+  if (!fs.existsSync(resolved)) {
+    return res.status(404).json({ error: 'Not found', message: 'Document is no longer available' })
+  }
+
+  res.download(resolved, raw.document.originalName || 'document', (err) => {
+    if (err && !res.headersSent) next(err)
+  })
 }
 
 /**

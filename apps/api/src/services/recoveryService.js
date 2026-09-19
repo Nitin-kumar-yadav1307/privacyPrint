@@ -9,21 +9,25 @@ const { processExpiredJobs } = require('./expiryService')
 const ORPHAN_GRACE_MS = 10 * 60 * 1000
 
 // Run before accepting requests, with exclusive ownership of these directories.
-function recoverJobs(now = Date.now(), log = console.log, onError = console.error) {
+async function recoverJobs(now = Date.now(), log = console.log, onError = console.error) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true, mode: 0o700 })
   if (DATA_DIR === UPLOAD_DIR) throw new Error('Metadata and uploads must use separate directories')
   const referenced = new Set()
-  // Validate every path before any destructive recovery action.
+  // Validate every path before any destructive recovery action. Remote (S3)
+  // documents have no local file and are managed by the expiry worker, not
+  // by filesystem recovery.
   for (const job of jobs.allJobs()) {
+    if (job.document.storage === 's3') continue
     const filePath = path.resolve(job.document.path)
     if (path.dirname(filePath) !== UPLOAD_DIR || path.basename(filePath) === '.gitkeep') {
       throw new Error('Stored document path is invalid; recovery stopped')
     }
     referenced.add(filePath)
   }
-  processExpiredJobs(now, log, onError)
+  await processExpiredJobs(now, log, onError)
   for (const job of jobs.allJobs()) {
     if (![JOB_STATUS.CREATED, JOB_STATUS.READY, JOB_STATUS.PRINTING, JOB_STATUS.PRINTED].includes(job.status)) continue
+    if (job.document.storage === 's3') continue
     try {
       fs.lstatSync(job.document.path)
     } catch (error) {
