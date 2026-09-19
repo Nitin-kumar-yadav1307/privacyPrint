@@ -96,14 +96,7 @@
       "Type": "AWS::Lambda::Url",
       "Properties": {
         "TargetFunctionArn": { "Ref": "ApiFunction" },
-        "AuthType": "NONE",
-        "Cors": {
-          "AllowCredentials": false,
-          "AllowHeaders": ["authorization", "content-type"],
-          "AllowMethods": ["GET", "POST", "OPTIONS"],
-          "AllowOrigins": ["*"],
-          "MaxAge": 86400
-        }
+        "AuthType": "NONE"
       }
     }
   },
