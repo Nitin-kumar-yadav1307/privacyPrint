@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env src/index.js",
+    "printers": "node --env-file-if-exists=.env src/listPrinters.js",
     "test": "node --test tests/connector.test.js"
   },
   "engines": {

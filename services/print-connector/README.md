@@ -101,6 +101,62 @@ what printers exist and picks one by itself:
 
 ## Setup (Linux / CUPS)
 
+### One-time install (recommended — no configuration afterwards)
+
+After installation the connector needs nothing from the shop owner: it signs in
+by itself, stays online across reboots, and **any printer the OS sees — USB or
+Wi-Fi — is detected and used automatically** (`PRINTER_NAME` is only an optional
+override). Check what it would do without printing anything:
+
+```bash
+npm run printers
+```
+
+**Linux / macOS**
+
+```bash
+./install/install-linux.sh --api http://localhost:3001 --tenant TENANT-002 --passcode privacyprint-demo
+systemctl --user status privacyprint-connector   # running now, restarts on boot
+journalctl --user -u privacyprint-connector -f   # live logs
+```
+
+The installer warns if `ipp-usb` is missing (required on modern Fedora/Ubuntu
+for USB printers to appear in CUPS; it is started automatically by the OS when
+a USB printer is plugged in).
+
+**Windows**
+
+```powershell
+cd install
+powershell -ExecutionPolicy Bypass -File install-windows.ps1 -ApiUrl http://localhost:3001 -TenantId TENANT-002
+```
+
+Copies the connector to `%LOCALAPPDATA%\PrivacyPrint`, downloads **SumatraPDF**
+(required for real printing on Windows) and registers auto-start at login
+(scheduled task `PrivacyPrintConnector`).
+
+**Honest disclosure:** the Windows installer and print path are implemented and
+unit-tested but have not been executed on real Windows hardware; the Linux
+installer, discovery, health checks and PDF fallback are exercised on the
+project owner's Fedora machine.
+
+### Printer self-check
+
+`npm run printers` prints what the connector will do — detected printers, which
+one it chose and why, and the device's real health — and exits non-zero with an
+actionable message when the printer is unplugged, out of paper or erroring:
+
+```
+"state": "MEDIA_EMPTY",   // UNREACHABLE / MEDIA_EMPTY / ERROR / OK
+"printer": { "name": "HP_DeskJet_4900_series_2849E5_USB", "source": "AUTO_DETECTED", "connection": "USB" }
+```
+
+The same health state is sent in the heartbeat and shown on the shop dashboard,
+and print jobs are refused up-front (with a fix-it message) instead of jamming
+the CUPS queue when the printer cannot accept paper.
+
+### Manual run (development)
+
 1. Install CUPS: `sudo apt install cups` (or your distro equivalent).
 2. Connect the printer (USB or Wi-Fi) — no PrivacyPrint configuration needed.
    Verify the OS sees it: `lpstat -p -d`.

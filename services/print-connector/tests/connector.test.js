@@ -380,3 +380,81 @@ test('a job still queued after the observation window is accepted, not failed', 
   })
   assert.deepEqual(result, { ok: true, mode: 'CUPS', verified: false })
 })
+
+// ---- Printer health (pre-flight) -------------------------------------------
+
+const { parsePrinterReport, classifyPrinterHealth, checkPrinterHealth, PRINTER_HEALTH } = require('../src/printerHealth')
+
+test('printer health: unplugged-device CUPS report classifies as UNREACHABLE', () => {
+  // Captured verbatim from the project owner's Fedora machine while the USB
+  // printer was detached — the queue still looks "idle. enabled".
+  const real = `printer HP_DeskJet_4900_series_2849E5_USB is idle.  enabled since Thu 01 Jan 1970 00:00:00 UTC
+	Description from localhost:
+	Location:
+	MakeModel: HP DeskJet Plus 4100 series, driverless, cups-filters 1.28.17
+	Alerts: printer-unreachable
+	DeviceState: 4
+	The printer may not exist or is unavailable at this time.`
+  const health = classifyPrinterHealth(parsePrinterReport(real))
+  assert.equal(health.state, PRINTER_HEALTH.UNREACHABLE)
+  assert.equal(health.blocking, true)
+})
+
+test('printer health: media-empty and filter-failure classify as blocking', () => {
+  assert.equal(classifyPrinterHealth({ name: 'p', state: 'idle', message: '', alerts: 'media-empty-report' }).state, PRINTER_HEALTH.MEDIA_EMPTY)
+  assert.equal(classifyPrinterHealth({ name: 'p', state: 'idle', message: 'gstoraster filter failed.', alerts: '' }).state, PRINTER_HEALTH.ERROR)
+  assert.equal(classifyPrinterHealth({ name: 'p', state: 'idle', message: '', alerts: '' }).state, PRINTER_HEALTH.OK)
+  assert.equal(classifyPrinterHealth({ name: 'p', state: 'idle', message: '', alerts: '' }).blocking, false)
+})
+
+test('pre-flight refuses to queue a job into an unreachable printer', async () => {
+  const printerService = require('../src/printerService')
+  const discovery = {
+    available: true,
+    printers: ['HP_DeskJet'],
+    defaultPrinter: 'HP_DeskJet',
+    details: [{ name: 'HP_DeskJet', connection: 'USB' }],
+    reason: '',
+  }
+  const healthRunner = () => ({
+    status: 0,
+    stdout: 'printer HP_DeskJet is idle.  enabled since now\n\tAlerts: printer-unreachable\n\tThe printer may not exist or is unavailable at this time.',
+  })
+  const result = await printerService.printDocument('/tmp/doc.pdf', { printSettings: SETTINGS }, {
+    mode: 'cups',
+    cupsDiscovery: discovery,
+    healthRunner,
+  })
+  assert.equal(result.ok, false)
+  assert.equal(result.health, PRINTER_HEALTH.UNREACHABLE)
+  assert.match(result.error, /not reachable.*switched on and connected/)
+})
+
+test('pre-flight passes healthy printers through to CUPS', async () => {
+  const printerService = require('../src/printerService')
+  const discovery = {
+    available: true,
+    printers: ['HP_DeskJet'],
+    defaultPrinter: 'HP_DeskJet',
+    details: [{ name: 'HP_DeskJet', connection: 'USB' }],
+    reason: '',
+  }
+  const healthRunner = () => ({ status: 0, stdout: 'printer HP_DeskJet is idle.  enabled since now' })
+  const result = await printerService.printDocument('/tmp/doc.pdf', { printSettings: SETTINGS }, {
+    mode: 'cups',
+    cupsDiscovery: discovery,
+    healthRunner,
+    // Never touches the real CUPS queue: lp is stubbed and fails at submission.
+    printDeps: { runner: () => ({ status: 1, stdout: '', stderr: 'test stub' }) },
+  })
+  // The pre-flight did not block; the failure came from lp itself.
+  assert.equal(result.mode, 'CUPS')
+  assert.equal(result.ok, false)
+  assert.equal(result.health, undefined)
+})
+
+test('checkPrinterHealth: missing lpstat reports UNKNOWN and never blocks', () => {
+  const health = checkPrinterHealth('p', { runner: () => ({ error: new Error('enoent') }) })
+  assert.equal(health.state, PRINTER_HEALTH.UNKNOWN)
+  assert.equal(health.blocking, false)
+})
