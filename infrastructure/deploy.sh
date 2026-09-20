@@ -105,14 +105,29 @@ CLOUDFRONT_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-w
 log "Web S3: $WEBSITE_URL"
 [[ -n "$CLOUDFRONT_URL" ]] && log "Web CloudFront (HTTPS): $CLOUDFRONT_URL"
 
+# Pre-fetch existing API URL if already deployed
+API_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-api \
+  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text $NOCLI 2>/dev/null || true)"
+[[ "$API_URL" == "None" ]] && API_URL=""
+
+log "Building web frontend"
+(
+  cd "$ROOT/apps/web"
+  npm install --no-audit --no-fund
+  VITE_API_BASE_URL="${API_URL:-}" npm run build
+)
+# Copy SPA assets into API public folder for direct Lambda HTTPS hosting
+rm -rf "$ROOT/apps/api/public"
+cp -r "$ROOT/apps/web/dist" "$ROOT/apps/api/public"
+
 # --- 6. API Lambda -----------------------------------------------------------
-log "Building the API deployment package"
+log "Building the API deployment package (including frontend SPA)"
 (
   cd "$ROOT/apps/api"
   npm install --no-audit --no-fund
   mkdir -p dist
   rm -f dist/lambda.zip
-  zip -q -r dist/lambda.zip src node_modules package.json
+  zip -q -r dist/lambda.zip src node_modules package.json public
 )
 log "Deploying API Lambda"
 run aws cloudformation package \
@@ -136,20 +151,14 @@ API_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-api \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text $NOCLI)"
 log "API Function URL: $API_URL"
 
-log "Building the web app against $API_URL"
-(
-  cd "$ROOT/apps/web"
-  npm install --no-audit --no-fund
-  VITE_API_BASE_URL="$API_URL" npm run build
-)
 log "Uploading the SPA to s3://$WEB_BUCKET"
 run aws s3 sync "$ROOT/apps/web/dist" "s3://$WEB_BUCKET" --delete --cache-control "no-cache"
 
 log "Deployment complete (region $REGION)"
-printf '  API:         %s\n' "$API_URL"
-[[ -n "$CLOUDFRONT_URL" ]] && printf '  Web (HTTPS): %s\n' "$CLOUDFRONT_URL"
-printf '  Web (HTTP):  %s\n' "$WEBSITE_URL"
-printf '  Health check: curl %sapi/health\n' "$API_URL"
+printf '  API & Web (AWS HTTPS): %s\n' "$API_URL"
+[[ -n "$CLOUDFRONT_URL" ]] && printf '  Web CloudFront (HTTPS): %s\n' "$CLOUDFRONT_URL"
+printf '  Web (S3 HTTP):         %s\n' "$WEBSITE_URL"
+printf '  Health check:          curl %sapi/health\n' "$API_URL"
 printf '\nNext steps:\n'
 printf '  1. Point the shop connector at the API URL (API_BASE_URL=%s)\n' "$API_URL"
 printf '  2. Verify expiry: check the privacyprint-expire-jobs Lambda CloudWatch logs\n'

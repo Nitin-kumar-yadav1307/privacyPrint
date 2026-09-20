@@ -74,6 +74,19 @@ app.use('/api', tenantRoutes)
 app.use('/api', authRoutes)
 app.use('/api', connectorRoutes)
 
+// Static SPA files (enables full HTTPS web hosting directly via AWS Lambda Function URL)
+const path = require('path')
+const publicDir = path.join(__dirname, '../public')
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir))
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      return res.sendFile(path.join(publicDir, 'index.html'))
+    }
+    next()
+  })
+}
+
 // Error handler (must be last)
 app.use(errorHandler)
 

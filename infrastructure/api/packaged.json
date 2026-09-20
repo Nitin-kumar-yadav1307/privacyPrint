@@ -71,7 +71,7 @@ Resources:
         - Arn
       Code:
         S3Bucket: privacyprint-deploy-430758392632-ap-south-1
-        S3Key: api/bae3a351dbe6039d0d84f69b4c307bf9
+        S3Key: api/c2adca7e61b8ce9c0e6374d7665c131a
       Environment:
         Variables:
           NODE_ENV: production

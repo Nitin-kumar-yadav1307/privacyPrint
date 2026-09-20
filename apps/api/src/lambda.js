@@ -9,7 +9,10 @@
 const serverless = require('serverless-http')
 const { app } = require('./server')
 
-const slsHandler = serverless(app)
+const slsHandler = serverless(app, {
+  binary: ['image/*', 'font/*', 'application/octet-stream'],
+})
+
 
 module.exports.handler = async (event, context) => {
   const res = await slsHandler(event, context)
