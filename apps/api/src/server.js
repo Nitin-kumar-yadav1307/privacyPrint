@@ -19,7 +19,7 @@ function isAllowedOrigin(origin) {
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean)
-      .concat(['http://localhost:5174']),
+      .concat(['http://localhost:5174', 'https://privacyprint.urbackend.in', 'http://privacyprint.urbackend.in']),
   )
   if (allowedOrigins.has(origin)) return true
   if (process.env.NODE_ENV !== 'production') {

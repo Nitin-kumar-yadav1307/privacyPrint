@@ -145,7 +145,7 @@ run aws cloudformation deploy \
       DocumentBucketName="$DOCUMENT_BUCKET" \
       AuthSecret="$AUTH_SECRET" \
       ShopDemoPasscode="$SHOP_DEMO_PASSCODE" \
-      CorsOrigin="${CORS_ORIGIN:-http://localhost:5173,$WEBSITE_URL${CLOUDFRONT_URL:+,$CLOUDFRONT_URL}}" \
+      CorsOrigin="${CORS_ORIGIN:-http://localhost:5173,$WEBSITE_URL,https://privacyprint.urbackend.in${CLOUDFRONT_URL:+,$CLOUDFRONT_URL}}" \
   --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
 API_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-api \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text $NOCLI)"
