@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 const template = require('./template.json')
+const cloudfrontTemplate = require('./template.cloudfront.json')
 
 const bucket = template.Resources.WebBucket
 const policy = template.Resources.WebBucketBucketPolicy || template.Resources.WebBucketPolicy
@@ -19,14 +20,11 @@ test('web bucket serves the SPA with an explicit public-read policy only', () =>
 test('web outputs give the deploy script the URL and bucket name', () => {
   assert.deepEqual(template.Outputs.WebsiteURL.Value, { 'Fn::GetAtt': ['WebBucket', 'WebsiteURL'] })
   assert.deepEqual(template.Outputs.WebBucketName.Value, { Ref: 'WebBucket' })
-  assert.deepEqual(template.Outputs.CloudFrontURL.Value, {
-    'Fn::Sub': 'https://${CloudFrontDistribution.DomainName}',
-  })
 })
 
-test('cloudfront distribution enables HTTPS redirect and SPA route fallback', () => {
-  const cf = template.Resources.CloudFrontDistribution
-  assert.ok(cf, 'CloudFrontDistribution resource exists')
+test('cloudfront distribution template enables HTTPS redirect and SPA route fallback', () => {
+  const cf = cloudfrontTemplate.Resources.CloudFrontDistribution
+  assert.ok(cf, 'CloudFrontDistribution resource exists in cloudfront template')
   assert.equal(cf.Type, 'AWS::CloudFront::Distribution')
   const config = cf.Properties.DistributionConfig
   assert.equal(config.Enabled, true)
@@ -36,4 +34,7 @@ test('cloudfront distribution enables HTTPS redirect and SPA route fallback', ()
   assert.ok(err404, '404 error response fallback configured')
   assert.equal(err404.ResponseCode, 200)
   assert.equal(err404.ResponsePagePath, '/index.html')
+  assert.deepEqual(cloudfrontTemplate.Outputs.CloudFrontURL.Value, {
+    'Fn::Sub': 'https://${CloudFrontDistribution.DomainName}',
+  })
 })

@@ -1,0 +1,99 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "PrivacyPrint customer web app static hosting with CloudFront HTTPS (hackathon demo)",
+  "Resources": {
+    "WebBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Delete",
+      "UpdateReplacePolicy": "Delete",
+      "Properties": {
+        "WebsiteConfiguration": {
+          "IndexDocument": "index.html",
+          "ErrorDocument": "index.html"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true
+        },
+        "Tags": [{ "Key": "Project", "Value": "PrivacyPrint" }]
+      }
+    },
+    "WebBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "WebBucket" },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "PublicReadWebsiteContent",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": { "Fn::Sub": "${WebBucket.Arn}/*" }
+            }
+          ]
+        }
+      }
+    },
+    "CloudFrontDistribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Comment": "PrivacyPrint Web CloudFront Distribution",
+          "Enabled": true,
+          "DefaultRootObject": "index.html",
+          "Origins": [
+            {
+              "Id": "S3WebsiteOrigin",
+              "DomainName": {
+                "Fn::Select": [
+                  2,
+                  { "Fn::Split": ["/", { "Fn::GetAtt": ["WebBucket", "WebsiteURL"] }] }
+                ]
+              },
+              "CustomOriginConfig": {
+                "HTTPPort": 80,
+                "HTTPSPort": 443,
+                "OriginProtocolPolicy": "http-only"
+              }
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "TargetOriginId": "S3WebsiteOrigin",
+            "ViewerProtocolPolicy": "redirect-to-https",
+            "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+            "CachedMethods": ["GET", "HEAD"],
+            "Compress": true,
+            "ForwardedValues": {
+              "QueryString": false,
+              "Cookies": { "Forward": "none" }
+            }
+          },
+          "CustomErrorResponses": [
+            {
+              "ErrorCode": 403,
+              "ResponseCode": 200,
+              "ResponsePagePath": "/index.html",
+              "ErrorCachingMinTTL": 0
+            },
+            {
+              "ErrorCode": 404,
+              "ResponseCode": 200,
+              "ResponsePagePath": "/index.html",
+              "ErrorCachingMinTTL": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "WebsiteURL": { "Value": { "Fn::GetAtt": ["WebBucket", "WebsiteURL"] } },
+    "WebBucketName": { "Value": { "Ref": "WebBucket" } },
+    "CloudFrontDistributionId": { "Value": { "Ref": "CloudFrontDistribution" } },
+    "CloudFrontURL": {
+      "Value": { "Fn::Sub": "https://${CloudFrontDistribution.DomainName}" }
+    }
+  }
+}
