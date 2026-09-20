@@ -98,9 +98,29 @@
         "TargetFunctionArn": { "Ref": "ApiFunction" },
         "AuthType": "NONE",
         "Cors": {
-          "AllowOrigins": ["*"],
-          "AllowMethods": ["*"]
+          "AllowCredentials": false,
+          "AllowHeaders": ["authorization", "content-type"],
+          "AllowMethods": ["*"],
+          "AllowOrigins": { "Fn::Split": [",", { "Ref": "CorsOrigin" }] },
+          "MaxAge": 86400
         }
+      }
+    },
+    "ApiFunctionUrlPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Ref": "ApiFunction" },
+        "Action": "lambda:InvokeFunctionUrl",
+        "Principal": "*",
+        "FunctionUrlAuthType": "NONE"
+      }
+    },
+    "ApiFunctionInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Ref": "ApiFunction" },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "*"
       }
     }
   },

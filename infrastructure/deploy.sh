@@ -89,7 +89,18 @@ run aws cloudformation deploy \
   --parameter-overrides LambdaArn="$EXPIRY_ARN" \
   --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
 
-# --- 5. API Lambda -----------------------------------------------------------
+# --- 5. Web hosting ----------------------------------------------------------
+log "Deploying web static hosting"
+run aws cloudformation deploy \
+  --template-file "$ROOT/infrastructure/web/template.json" \
+  --stack-name privacyprint-web \
+  --region "$REGION" --no-fail-on-empty-changeset $NOCLI
+WEB_BUCKET="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
+  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`WebBucketName`].OutputValue' --output text $NOCLI)"
+WEBSITE_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
+  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`WebsiteURL`].OutputValue' --output text $NOCLI)"
+
+# --- 6. API Lambda -----------------------------------------------------------
 log "Building the API deployment package"
 (
   cd "$ROOT/apps/api"
@@ -114,22 +125,11 @@ run aws cloudformation deploy \
       DocumentBucketName="$DOCUMENT_BUCKET" \
       AuthSecret="$AUTH_SECRET" \
       ShopDemoPasscode="$SHOP_DEMO_PASSCODE" \
-      CorsOrigin="${CORS_ORIGIN:-http://localhost:5173}" \
+      CorsOrigin="${CORS_ORIGIN:-http://localhost:5173,$WEBSITE_URL}" \
   --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
 API_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-api \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text $NOCLI)"
 log "API Function URL: $API_URL"
-
-# --- 6. Web hosting ----------------------------------------------------------
-log "Deploying web static hosting"
-run aws cloudformation deploy \
-  --template-file "$ROOT/infrastructure/web/template.json" \
-  --stack-name privacyprint-web \
-  --region "$REGION" --no-fail-on-empty-changeset $NOCLI
-WEB_BUCKET="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
-  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`WebBucketName`].OutputValue' --output text $NOCLI)"
-WEBSITE_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
-  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`WebsiteURL`].OutputValue' --output text $NOCLI)"
 
 log "Building the web app against $API_URL"
 (

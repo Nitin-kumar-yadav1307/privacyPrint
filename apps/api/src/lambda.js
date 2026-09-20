@@ -9,4 +9,23 @@
 const serverless = require('serverless-http')
 const { app } = require('./server')
 
-module.exports.handler = serverless(app)
+const slsHandler = serverless(app)
+
+module.exports.handler = async (event, context) => {
+  const res = await slsHandler(event, context)
+  if (res && res.headers) {
+    for (const key of Object.keys(res.headers)) {
+      if (key.toLowerCase().startsWith('access-control-')) {
+        delete res.headers[key]
+      }
+    }
+  }
+  if (res && res.multiValueHeaders) {
+    for (const key of Object.keys(res.multiValueHeaders)) {
+      if (key.toLowerCase().startsWith('access-control-')) {
+        delete res.multiValueHeaders[key]
+      }
+    }
+  }
+  return res
+}

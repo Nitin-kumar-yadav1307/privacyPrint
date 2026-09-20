@@ -3,8 +3,28 @@
  * The AWS SDK is only loaded here, so unit tests can exercise the worker's
  * logic with a fake repository and no AWS dependencies installed.
  */
-const { DynamoDBClient, ScanCommand, UpdateCommand } = require('@aws-sdk/client-dynamodb')
-const { S3Client, DeleteObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3')
+const { DynamoDBClient, ScanCommand, UpdateItemCommand } = require('@aws-sdk/client-dynamodb')
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3')
+
+function unmarshallValue(val) {
+  if (val === null || val === undefined) return val
+  if ('S' in val) return val.S
+  if ('N' in val) return Number(val.N)
+  if ('BOOL' in val) return val.BOOL
+  if ('NULL' in val) return null
+  if ('M' in val) return unmarshallItem(val.M)
+  if ('L' in val) return val.L.map(unmarshallValue)
+  return val
+}
+
+function unmarshallItem(raw) {
+  if (!raw) return {}
+  const res = {}
+  for (const [k, v] of Object.entries(raw)) {
+    res[k] = unmarshallValue(v)
+  }
+  return res
+}
 
 function createRepository(env = process.env) {
   const jobsTable = env.JOBS_TABLE
@@ -16,7 +36,8 @@ function createRepository(env = process.env) {
   const ddb = new DynamoDBClient({})
   const s3 = new S3Client({})
 
-  function unmarshall(job) {
+  function unmarshall(rawJob) {
+    const job = unmarshallItem(rawJob)
     return {
       jobId: job.jobId,
       tenantId: job.tenantId,
@@ -56,14 +77,14 @@ function createRepository(env = process.env) {
    */
   async function deleteDocument(job) {
     const document = job.document || {}
-    const key = document.objectKey || document.filename
+    const key = document.key || document.objectKey || document.filename
     if (!key) throw new Error('Document has no object key')
     await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
   }
 
   async function markExpired(jobId) {
     await ddb.send(
-      new UpdateCommand({
+      new UpdateItemCommand({
         TableName: jobsTable,
         Key: { jobId: { S: jobId } },
         ConditionExpression: '#s = :printed',
@@ -80,7 +101,7 @@ function createRepository(env = process.env) {
 
   async function markCancelled(jobId, reason) {
     await ddb.send(
-      new UpdateCommand({
+      new UpdateItemCommand({
         TableName: jobsTable,
         Key: { jobId: { S: jobId } },
         ConditionExpression: '#s IN (:created, :ready)',
@@ -99,4 +120,4 @@ function createRepository(env = process.env) {
   return { findActive, deleteDocument, markExpired, markCancelled }
 }
 
-module.exports = { createRepository }
+module.exports = { createRepository, unmarshallItem, unmarshallValue }

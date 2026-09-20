@@ -16,7 +16,9 @@ export function useApiBaseUrl() {
  * @returns {Promise<Object>} The parsed JSON response
  */
 export async function fetchJSON(baseUrl, url, options = {}) {
-  const fullUrl = `${baseUrl}${url}`
+  const cleanBase = (baseUrl || '').replace(/\/+$/, '')
+  const cleanPath = url.startsWith('/') ? url : `/${url}`
+  const fullUrl = `${cleanBase}${cleanPath}`
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -67,7 +69,9 @@ export async function uploadFile(baseUrl, url, file, fields = {}) {
     formData.append(key, value)
   })
 
-  const fullUrl = `${baseUrl}${url}`
+  const cleanBase = (baseUrl || '').replace(/\/+$/, '')
+  const cleanPath = url.startsWith('/') ? url : `/${url}`
+  const fullUrl = `${cleanBase}${cleanPath}`
   const res = await fetch(fullUrl, {
     method: 'POST',
     body: formData,

@@ -31,13 +31,37 @@ function isAllowedOrigin(origin) {
 const app = express()
 
 // Middleware
-app.use(cors({
-  origin(origin, callback) {
-    callback(null, isAllowedOrigin(origin))
-  },
-}))
+// In AWS Lambda, CORS is handled at the Function URL layer. Setting CORS headers here
+// causes duplicate Access-Control-Allow-Origin headers, which browsers reject with "Failed to fetch".
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  app.use(cors({
+    origin(origin, callback) {
+      callback(null, isAllowedOrigin(origin))
+    },
+  }))
+}
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// When invoked via serverless-http behind Lambda Function URL, req.body may arrive as a Buffer
+// which bypasses express.json(). Parse Buffer bodies to ensure req.body contains JSON object.
+app.use((req, res, next) => {
+  if (Buffer.isBuffer(req.body)) {
+    const contentType = req.headers['content-type'] || ''
+    const str = req.body.toString('utf8')
+    if (contentType.includes('application/json')) {
+      try {
+        req.body = str ? JSON.parse(str) : {}
+      } catch {}
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      try {
+        const querystring = require('querystring')
+        req.body = querystring.parse(str)
+      } catch {}
+    }
+  }
+  next()
+})
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {

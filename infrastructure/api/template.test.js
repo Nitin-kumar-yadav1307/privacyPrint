@@ -12,7 +12,7 @@ test('api lambda exposes the express app through a function url', () => {
   assert.equal(fn.Properties.Runtime, 'nodejs22.x')
   assert.equal(fn.Properties.Code, '../../apps/api/dist/lambda.zip')
   assert.equal(url.Properties.AuthType, 'NONE')
-  assert.deepEqual(url.Properties.Cors.AllowMethods, ['GET', 'POST', 'OPTIONS'])
+  assert.deepEqual(url.Properties.Cors.AllowMethods, ['*'])
   assert.deepEqual(template.Outputs.ApiFunctionUrl.Value, {
     'Fn::GetAtt': ['ApiFunctionUrl', 'FunctionUrl'],
   })

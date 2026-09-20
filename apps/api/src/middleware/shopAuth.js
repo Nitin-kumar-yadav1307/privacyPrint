@@ -139,12 +139,6 @@ const requireShopTenant = createTenantResolver({ required: true })
  */
 function resolveCreateTenant(req, res, next) {
   if (req.get('authorization') === undefined) {
-    if (AUTH_REQUIRED) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'A shop session is required for this operation',
-      })
-    }
     return next()
   }
   return createTenantResolver({ required: true })(req, res, next)

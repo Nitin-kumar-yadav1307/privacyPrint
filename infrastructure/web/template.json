@@ -31,17 +31,6 @@
               "Principal": "*",
               "Action": "s3:GetObject",
               "Resource": { "Fn::Sub": "${WebBucket.Arn}/*" }
-            },
-            {
-              "Sid": "DenyInsecureTransport",
-              "Effect": "Deny",
-              "Principal": "*",
-              "Action": "s3:*",
-              "Resource": [
-                { "Fn::GetAtt": ["WebBucket", "Arn"] },
-                { "Fn::Sub": "${WebBucket.Arn}/*" }
-              ],
-              "Condition": { "Bool": { "aws:SecureTransport": "false" } }
             }
           ]
         }

@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: PrivacyPrint API — Express app behind a Lambda Function URL
+Parameters:
+  DocumentBucketName:
+    Type: String
+    Description: Name of the private document bucket (from the storage stack)
+  AuthSecret:
+    Type: String
+    NoEcho: true
+    Description: HMAC secret for signing shop sessions (generate with openssl 
+      rand -hex 32)
+  ShopDemoPasscode:
+    Type: String
+    NoEcho: true
+    Description: Demo shop sign-in passcode
+  CorsOrigin:
+    Type: String
+    Description: Comma-separated list of allowed browser origins
+Resources:
+  ApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: privacyprint-api-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+            Resource:
+              Fn::Sub: arn:aws:s3:::${DocumentBucketName}/*
+          - Effect: Allow
+            Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:UpdateItem
+            Resource:
+            - Fn::Sub: 
+                arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/privacyprint-jobs
+            - Fn::Sub: 
+                arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/privacyprint-jobs/index/*
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: privacyprint-api
+      Runtime: nodejs22.x
+      Handler: src/lambda.handler
+      MemorySize: 512
+      Timeout: 30
+      Role:
+        Fn::GetAtt:
+        - ApiFunctionRole
+        - Arn
+      Code:
+        S3Bucket: privacyprint-deploy-430758392632-ap-south-1
+        S3Key: api/bae3a351dbe6039d0d84f69b4c307bf9
+      Environment:
+        Variables:
+          NODE_ENV: production
+          AUTH_REQUIRED: 'true'
+          AUTH_SECRET:
+            Ref: AuthSecret
+          SHOP_DEMO_PASSCODE:
+            Ref: ShopDemoPasscode
+          CORS_ORIGIN:
+            Ref: CorsOrigin
+          DOCUMENT_BUCKET:
+            Ref: DocumentBucketName
+          JOBS_TABLE: privacyprint-jobs
+          UPLOAD_DIR: /tmp/uploads
+          DATA_DIR: /tmp/data
+  ApiFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn:
+        Ref: ApiFunction
+      AuthType: NONE
+      Cors:
+        AllowCredentials: false
+        AllowHeaders:
+        - authorization
+        - content-type
+        AllowMethods:
+        - '*'
+        AllowOrigins:
+          Fn::Split:
+          - ','
+          - Ref: CorsOrigin
+        MaxAge: 86400
+  ApiFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ApiFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+  ApiFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: '*'
+Outputs:
+  ApiFunctionUrl:
+    Value:
+      Fn::GetAtt:
+      - ApiFunctionUrl
+      - FunctionUrl
+  ApiFunctionArn:
+    Value:
+      Fn::GetAtt:
+      - ApiFunction
+      - Arn
