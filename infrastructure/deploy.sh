@@ -99,6 +99,10 @@ WEB_BUCKET="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`WebBucketName`].OutputValue' --output text $NOCLI)"
 WEBSITE_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`WebsiteURL`].OutputValue' --output text $NOCLI)"
+CLOUDFRONT_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-web \
+  --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontURL`].OutputValue' --output text $NOCLI)"
+log "Web S3: $WEBSITE_URL"
+log "Web CloudFront (HTTPS): $CLOUDFRONT_URL"
 
 # --- 6. API Lambda -----------------------------------------------------------
 log "Building the API deployment package"
@@ -125,7 +129,7 @@ run aws cloudformation deploy \
       DocumentBucketName="$DOCUMENT_BUCKET" \
       AuthSecret="$AUTH_SECRET" \
       ShopDemoPasscode="$SHOP_DEMO_PASSCODE" \
-      CorsOrigin="${CORS_ORIGIN:-http://localhost:5173,$WEBSITE_URL}" \
+      CorsOrigin="${CORS_ORIGIN:-http://localhost:5173,$WEBSITE_URL,$CLOUDFRONT_URL}" \
   --region "$REGION" --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset $NOCLI
 API_URL="$(aws cloudformation describe-stacks --stack-name privacyprint-api \
   --region "$REGION" --query 'Stacks[0].Outputs[?OutputKey==`ApiFunctionUrl`].OutputValue' --output text $NOCLI)"
@@ -141,7 +145,7 @@ log "Uploading the SPA to s3://$WEB_BUCKET"
 run aws s3 sync "$ROOT/apps/web/dist" "s3://$WEB_BUCKET" --delete --cache-control "no-cache"
 
 log "Deployment complete (region $REGION)"
-printf '  API:  %s\n  Web:  %s\n' "$API_URL" "$WEBSITE_URL"
+printf '  API:         %s\n  Web (HTTPS): %s\n  Web (HTTP):  %s\n' "$API_URL" "$CLOUDFRONT_URL" "$WEBSITE_URL"
 printf '  Health check: curl %sapi/health\n' "$API_URL"
 printf '\nNext steps:\n'
 printf '  1. Point the shop connector at the API URL (API_BASE_URL=%s)\n' "$API_URL"
